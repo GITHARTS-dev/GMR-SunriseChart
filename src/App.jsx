@@ -12,7 +12,10 @@ const HEADER_ALIASES = {
   dimension: ["dimension", "dim", "pillar", "track", "stream", "workstream", "area"],
   header: ["header", "topic", "theme", "milestone", "title", "heading"],
   initiative: ["initiative", "subinitiative", "item", "capability"],
-  task: ["task", "tasks", "taskname", "activity", "action", "actions", "description", "details", "deliverable"],
+  // "Outcome" is the initiative-level goal in the new sheet layout. Keep it
+  // separate from "task" so each Action row stays the leaf item.
+  outcome: ["outcome", "outcomes", "result", "objective", "goal"],
+  task: ["task", "tasks", "taskname", "activity", "action", "actions", "deliverable"],
   status: ["status", "taskstatus", "progress", "state", "completion"],
   assignee: ["assignee", "owner", "responsible", "assignedto", "accountable"],
 };
@@ -221,6 +224,7 @@ const rowsFromSheet = (sheet, sheetName) => {
         header,
         initiative,
         task,
+        outcome: row.outcome || "",
         status: row.status || "todo",
         assignee: row.assignee || details.Assignee || details.Accountable || "",
         details,

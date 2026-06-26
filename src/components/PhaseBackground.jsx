@@ -126,8 +126,8 @@ export default function PhaseBackground() {
           strokeLinecap="round"
         />
         <line
-          x1={left + 10}
-          y1={bottom - 4}
+          x1={left}
+          y1={bottom}
           x2={right - 28}
           y2={top + 138}
           stroke="rgba(255,255,255,0.95)"

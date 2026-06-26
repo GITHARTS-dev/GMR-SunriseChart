@@ -5,6 +5,10 @@ import {
   UnauthenticatedTemplate,
 } from "@azure/msal-react";
 import { loginRequest } from "./authConfig.js";
+import { PHASE_COLORS } from "./constants.js";
+
+// The Establish → Enhance → Optimize journey, used as a top accent strip.
+const PHASE_ACCENT = `linear-gradient(90deg, ${PHASE_COLORS.Establish.solid} 0 33.33%, ${PHASE_COLORS.Enhance.solid} 33.33% 66.66%, ${PHASE_COLORS.Optimize.solid} 66.66% 100%)`;
 
 // Shows a "Sign in with Microsoft" screen until the user authenticates.
 // Only accounts assigned to the app in Entra ID can sign in successfully;
@@ -33,36 +37,42 @@ export default function AuthGate({ children }) {
   return (
     <>
       <UnauthenticatedTemplate>
-        <div
-          className="min-h-screen w-full flex items-center justify-center px-4"
-          style={{ background: "linear-gradient(180deg, #f8fafc 0%, #eef2f7 100%)" }}
-        >
-          <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-8 shadow-xl text-center">
-            <img
-              src="/harts-logo.svg"
-              alt="HARTS"
-              className="mx-auto h-16 w-auto object-contain"
-            />
-            <h1 className="mt-4 text-xl font-bold text-slate-900">
-              GMR Transformation Maturity Dashboard
-            </h1>
-            <p className="mt-2 text-sm text-slate-500">
-              Sign in with your Microsoft account to continue.
-            </p>
+        <div className="flex min-h-screen w-full items-center justify-center bg-white px-4">
+          <div className="w-full max-w-md overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl">
+            {/* Establish · Enhance · Optimize accent strip */}
+            <div className="h-1.5 w-full" style={{ background: PHASE_ACCENT }} />
 
-            <button
-              type="button"
-              onClick={handleLogin}
-              className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-slate-900 px-4 py-3 text-sm font-semibold text-white hover:bg-slate-800"
-            >
-              Sign in with Microsoft
-            </button>
+            <div className="p-8 text-center">
+              <img
+                src="/harts-logo.svg"
+                alt="HARTS"
+                className="mx-auto h-14 w-auto object-contain"
+              />
 
-            {error ? (
-              <div className="mt-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
-                {error}
+              <div className="mt-6 text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">
+                Transformation Maturity
               </div>
-            ) : null}
+              <h1 className="mt-1 text-2xl font-extrabold tracking-tight text-slate-900">
+                Dashboard
+              </h1>
+              <p className="mt-2 text-sm text-slate-500">
+                Sign in with your Microsoft account to continue.
+              </p>
+
+              <button
+                type="button"
+                onClick={handleLogin}
+                className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-slate-900 px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-slate-800"
+              >
+                Sign in with Microsoft
+              </button>
+
+              {error ? (
+                <div className="mt-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+                  {error}
+                </div>
+              ) : null}
+            </div>
           </div>
         </div>
       </UnauthenticatedTemplate>

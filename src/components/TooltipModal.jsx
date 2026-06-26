@@ -1,7 +1,16 @@
 import React from "react";
 import { motion } from "framer-motion";
 import ProgressCircle from "./ProgressCircle.jsx";
-import { PHASE_COLORS, STATUS_META } from "../constants.js";
+import { PHASE_COLORS } from "../constants.js";
+
+// A short sentence describing overall progress for the header.
+const progressStatement = (pct) => {
+  if (pct >= 100) return "All actions completed";
+  if (pct >= 70) return "On track to completion";
+  if (pct >= 30) return "Making steady progress";
+  if (pct > 0) return "Early progress underway";
+  return "Not started yet";
+};
 
 export default function TooltipModal({ item, anchor, containerRect }) {
   if (!item || !anchor || !containerRect) return null;
@@ -61,39 +70,16 @@ export default function TooltipModal({ item, anchor, containerRect }) {
           </div>
         </div>
 
-        {/* Stats bar */}
-        <div className="px-4 py-2.5 flex items-center gap-3 border-b border-slate-100">
-          <ProgressCircle pct={item.stats.pct} size={42} />
-          <div className="flex-1 grid grid-cols-3 gap-1.5 text-center">
-            {["done", "inprogress", "todo"].map((k) => {
-              const count =
-                k === "done"
-                  ? item.stats.done
-                  : k === "inprogress"
-                  ? item.stats.inprog
-                  : item.stats.todo;
-              const meta = STATUS_META[k];
-              return (
-                <div
-                  key={k}
-                  className="rounded-md py-1 px-1"
-                  style={{ background: meta.bg }}
-                >
-                  <div
-                    className="text-[15px] font-bold"
-                    style={{ color: meta.color }}
-                  >
-                    {count}
-                  </div>
-                  <div
-                    className="text-[9px] uppercase tracking-wider font-semibold"
-                    style={{ color: meta.color }}
-                  >
-                    {meta.label}
-                  </div>
-                </div>
-              );
-            })}
+        {/* Overall progress statement */}
+        <div className="px-4 py-3 flex items-center gap-3 border-b border-slate-100">
+          <ProgressCircle pct={item.stats.pct} size={44} />
+          <div className="min-w-0 flex-1">
+            <div className="text-[13px] font-bold text-slate-900 leading-tight">
+              {progressStatement(item.stats.pct)}
+            </div>
+            <div className="text-[11px] text-slate-500 mt-0.5">
+              {item.stats.done} of {item.stats.total} actions completed
+            </div>
           </div>
         </div>
 
@@ -106,19 +92,20 @@ export default function TooltipModal({ item, anchor, containerRect }) {
             {(item.initiatives || []).map((ini, i) => (
               <div
                 key={i}
-                className="flex items-start gap-2 px-2 py-1.5 rounded-md hover:bg-slate-50 transition-colors"
+                className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-slate-50 transition-colors"
               >
                 <span
-                  className="mt-1.5 inline-block rounded-full shrink-0"
+                  className="inline-block rounded-full shrink-0"
                   style={{
                     width: 6,
                     height: 6,
                     background: phaseColor,
                   }}
                 />
-                <span className="text-[12px] text-slate-700 leading-snug">
+                <span className="flex-1 text-[12px] text-slate-700 leading-snug">
                   {ini.name}
                 </span>
+                <ProgressCircle pct={ini.stats?.pct ?? 0} size={30} />
               </div>
             ))}
           </div>

@@ -16,7 +16,7 @@ export const TENANT_ID = "7c51239d-08e0-4f24-92b0-68ca7dccba54";
 // The app resolves the file from this link via the Graph /shares endpoint —
 // no Site/Drive/Item IDs needed.
 export const EXCEL_FILE_URL =
-  "https://gobalharts.sharepoint.com/:x:/s/HARTSConsulting/IQDIhclhQ1VFSYdufCg5F17FAUFW_7fJ1t4VnZfNmLpFHYE?e=HEPSEB";
+  "https://gobalharts.sharepoint.com/:x:/s/HARTSConsulting/IQBgN4h9G5PsR6cipclc2L1fAcuDGYPB6ZdIVeoNsV3nCFo?e=hWMJDK";
 
 // ⬇️ FILL — Emails allowed to toggle task completion (everyone else is read-only).
 //    Use lowercase. The other assigned users can VIEW but not edit.

@@ -25,31 +25,43 @@ export const PHASE_BANDS = {
 // Hand-tuned against the second reference image. Coordinates are in canvas
 // space, and the task renderer adds HEADER_H below the phase header band.
 export const CATEGORY_POSITIONS = {
+  // ── Establish · People ──
   "Establish::People::Stable, Credible leadership pipeline": { x: 90, y: 35 },
-  "Establish::People::Self-sustaining Talent ecosystem": { x: 255, y: 46 },
-  "Establish::People::Performance Management": { x: 90, y: 168 },
-  "Establish::People::Design and Execute an attractive EVP": { x: 220, y: 150 },
-  "Establish::Process::Move from projects toContinuous Improvementculture": { x: 110, y: 304 },
-  "Establish::Process::Portfolio Expansion": { x: 270, y: 304 },
-  "Establish::Technology::S4HANA": { x: 330, y: 498 },
+  "Establish::People::Self-sustaining Talent ecosystem": { x: 260, y: 40 },
+  "Establish::People::Performance Management": { x: 90, y: 120 },
+  "Establish::People::Design and Execute an attractive EVP": { x: 260, y: 150 },
+  "Establish::People::Values In Action": { x: 90, y: 200 },
+  // ── Establish · Process ──
+  "Establish::Process::Move from projects to CI culture": { x: 90, y: 300 },
+  "Establish::Process::Portfolio Expansion": { x: 265, y: 300 },
+  "Establish::Process::Process health": { x: 175, y: 400 },
+  // ── Establish · Technology ──
+  "Establish::Technology::Tech Strategy for GCC": { x: 220, y: 520 },
+  "Establish::Technology::Tech in Problem Solving": { x: 440, y: 510 },
+  "Establish::Technology::IT Health": { x: 370, y: 510 },
 
+  // ── Enhance · People ──
   "Enhance::People::Brand campaign": { x: 438, y: 38 },
-  "Enhance::People::New Ways of Working": { x: 446, y: 122 },
-  "Enhance::People::People Development": { x: 620, y: 62 },
-  "Enhance::Process::CoE Transition": { x: 680, y: 220 },
-  "Enhance::Process::Continuous improvement becomes a way of life": { x: 456, y: 264 },
-  "Enhance::Process::Continuous Improvement": { x: 456, y: 264 },
-  "Enhance::Process::Core Business Function Pilot": { x: 516, y: 334 },
-  "Enhance::Technology::Automation Strategy": { x: 570, y: 430 },
+  "Enhance::People::New Ways of Working": { x: 446, y: 128 },
+  "Enhance::People::People Development": { x: 625, y: 62 },
+  // ── Enhance · Process ──
+  "Enhance::Process::CoE Transition": { x: 690, y: 215 },
+  "Enhance::Process::Continuous Improvement Becomes a Way of Life": { x: 480, y: 220 },
+  "Enhance::Process::Core Business function Pilot": { x: 530, y: 320 },
+  // ── Enhance · Technology ──
+  "Enhance::Technology::Automation strategy": { x: 750, y: 430 },
+  "Enhance::Technology::S/4 HANA": { x: 600, y: 440},
 
+  // ── Optimize · People ──
   "Optimize::People::Performance Culture": { x: 812, y: 24 },
   "Optimize::People::Learning Organization": { x: 962, y: 24 },
   "Optimize::People::Employee Experience": { x: 1114, y: 22 },
+  // ── Optimize · Process ──
   "Optimize::Process::Core Business Transitions": { x: 842, y: 206 },
   "Optimize::Process::Process Excellence": { x: 1052, y: 158 },
-  "Optimize::Technology::Reposition Tech": { x: 940, y: 380 },
-  "Optimize::Technology::Tech-embedded Capability building": { x: 1180, y: 380 },
-  "Optimize::Technology::Tech-embedded Capability": { x: 1180, y: 380 },
+  // ── Optimize · Technology ──
+  "Optimize::Technology::Reposition tech": { x: 940, y: 380 },
+  "Optimize::Technology::Tech embedded capability building": { x: 1180, y: 380 },
 };
 
 export const FALLBACK_REGIONS = {

@@ -132,6 +132,7 @@ export function groupData(rows) {
       dimension: finalDim,
       header,
       initiative,
+      outcome: r.outcome || r.Outcome || r.details?.Outcome || "",
       assignee: r.assignee || r.Assignee || r.details?.Assignee || "",
       details: r.details || {},
     });
@@ -265,9 +266,24 @@ export function flattenForRender(tree) {
           tasks,
           pos,
           stats: computeStats(tasks),
+          hasFixedPosition: !!fixedPos,
         });
       }
     }
   }
+
+  // Dev helper: print the EXACT key string for every topic so the values used
+  // in CATEGORY_POSITIONS can be matched 1:1. "fixed: false" means the chart is
+  // auto-placing it (your x/y won't apply until the key matches this string).
+  if (typeof import.meta !== "undefined" && import.meta.env && import.meta.env.DEV) {
+    // eslint-disable-next-line no-console
+    console.debug(
+      "[dashboard] topic position keys — copy these EXACT strings into CATEGORY_POSITIONS:\n" +
+        items
+          .map((i) => `${i.hasFixedPosition ? "✓ matched " : "✗ AUTO    "} "${i.key}"`)
+          .join("\n")
+    );
+  }
+
   return items;
 }

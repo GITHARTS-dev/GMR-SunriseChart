@@ -158,6 +158,8 @@ export default function DashboardCanvas({
       <HeaderDetailView
         item={currentSelected}
         canEdit={isAdmin}
+        userName={userName}
+        userEmail={userEmail}
         onBack={() => setSelected(null)}
         onToggle={(initiativeName, idx) =>
           toggleTaskStatus(

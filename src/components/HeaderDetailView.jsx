@@ -1,20 +1,25 @@
 import React, { useState } from "react";
 import {
+  AlertCircle,
   AlertTriangle,
   ArrowLeft,
-  CalendarRange,
+  Briefcase,
+  CalendarCheck,
+  CalendarDays,
   CheckCircle2,
   ChevronDown,
+  ChevronUp,
   Circle,
   Clock,
-  Layers,
-  LayoutGrid,
+  Flag,
+  Hourglass,
   ListChecks,
+  MoreVertical,
+  Target,
+  Users,
 } from "lucide-react";
 
-import ProgressCircle from "./ProgressCircle.jsx";
-import { computeStats, getProgressColor } from "../utils.js";
-import { PHASE_COLORS } from "../constants.js";
+import { computeStats } from "../utils.js";
 
 const statusLabel = (status) => {
   if (status === "done") return "Completed";
@@ -24,25 +29,57 @@ const statusLabel = (status) => {
 
 // Status pill styling — In progress is orange, Done is green, To do is grey.
 const STATUS_STYLES = {
-  done: { bg: "bg-emerald-100", text: "text-emerald-700", Icon: CheckCircle2 },
-  inprogress: { bg: "bg-orange-100", text: "text-orange-700", Icon: Clock },
-  todo: { bg: "bg-slate-100", text: "text-slate-600", Icon: Circle },
+  done: { bg: "bg-emerald-100", text: "text-emerald-700", bar: "#10b981", Icon: CheckCircle2 },
+  inprogress: { bg: "bg-orange-100", text: "text-orange-700", bar: "#f97316", Icon: Clock },
+  todo: { bg: "bg-slate-100", text: "text-slate-600", bar: "#cbd5e1", Icon: Circle },
 };
 
-// Display order for actions: To do first, then In progress, then Completed.
-const STATUS_ORDER = { todo: 0, inprogress: 1, done: 2 };
-const byStatusOrder = (a, b) =>
-  (STATUS_ORDER[a.status] ?? 0) - (STATUS_ORDER[b.status] ?? 0);
+// Per-initiative colour themes (decorative — cycled by index). The icon is the
+// same for every initiative; only the colour varies.
+const INITIATIVE_ICON = Flag;
+const INITIATIVE_THEMES = [
+  { Icon: INITIATIVE_ICON, bg: "bg-orange-100", fg: "text-orange-500", tint: "bg-orange-50", color: "#f97316" },
+  { Icon: INITIATIVE_ICON, bg: "bg-amber-100", fg: "text-amber-500", tint: "bg-amber-50", color: "#f59e0b" },
+  { Icon: INITIATIVE_ICON, bg: "bg-violet-100", fg: "text-violet-500", tint: "bg-violet-50", color: "#8b5cf6" },
+  { Icon: INITIATIVE_ICON, bg: "bg-teal-100", fg: "text-teal-500", tint: "bg-teal-50", color: "#14b8a6" },
+  { Icon: INITIATIVE_ICON, bg: "bg-pink-100", fg: "text-pink-500", tint: "bg-pink-50", color: "#ec4899" },
+  { Icon: INITIATIVE_ICON, bg: "bg-blue-100", fg: "text-blue-500", tint: "bg-blue-50", color: "#3b82f6" },
+];
+const themeFor = (index) => INITIATIVE_THEMES[index % INITIATIVE_THEMES.length];
 
-// Dashboard blue (Optimize) — used for the left accent on each action card.
-const TASK_ACCENT = PHASE_COLORS.Optimize.solid;
+const pickDetail = (details = {}, ...keys) => {
+  for (const k of keys) {
+    const v = details?.[k];
+    if (v != null && String(v).trim()) return String(v).trim();
+  }
+  return "";
+};
 
-// Parse the assorted date formats coming from Excel (M/D/YYYY, M/D/YY,
-// D-M-YYYY, YYYY-MM-DD, …) into a Date, or null if it can't be understood.
+const taskStartDate = (task) =>
+  pickDetail(task.details, "Start Date", "Start", "StartDate", "start date", "start");
+const taskEndDate = (task) =>
+  pickDetail(
+    task.details,
+    "End Date",
+    "End",
+    "Due Date",
+    "EndDate",
+    "end date",
+    "end",
+    "due date"
+  );
+const taskAccountable = (task) =>
+  task.assignee ||
+  task.details?.Accountable ||
+  task.details?.accountable ||
+  task.details?.Owner ||
+  task.details?.owner ||
+  "";
+
+// Parse the assorted Excel date formats (M/D/YYYY, M/D/YY, D-M-YYYY, YYYY-MM-DD).
 const parseDate = (value) => {
   const s = String(value || "").trim();
   if (!s) return null;
-
   const parts = s.split(/[/\-.]/).map((p) => p.trim());
   if (parts.length === 3 && parts.every((p) => /^\d+$/.test(p))) {
     let [a, b, c] = parts.map(Number);
@@ -50,12 +87,10 @@ const parseDate = (value) => {
     let month;
     let day;
     if (String(parts[0]).length === 4) {
-      // YYYY-MM-DD
       year = a;
       month = b;
       day = c;
     } else {
-      // M/D/Y or D/M/Y — "16" can't be a month, so use that to disambiguate.
       year = c < 100 ? 2000 + c : c;
       if (a > 12) {
         day = a;
@@ -68,12 +103,20 @@ const parseDate = (value) => {
     const d = new Date(year, month - 1, day);
     return Number.isNaN(d.getTime()) ? null : d;
   }
-
   const d = new Date(s);
   return Number.isNaN(d.getTime()) ? null : d;
 };
 
-// A task is overdue when it isn't done yet and its end date is before today.
+const formatDate = (value) => {
+  const d = parseDate(value);
+  if (!d) return value || "—";
+  return d.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+};
+
 const isOverdue = (status, endValue) => {
   if (status === "done") return false;
   const end = parseDate(endValue);
@@ -83,423 +126,414 @@ const isOverdue = (status, endValue) => {
   return end < today;
 };
 
-const fieldLabel = (key) =>
-  String(key || "")
-    .replace(/[_-]+/g, " ")
-    .replace(/\b\w/g, (m) => m.toUpperCase());
+const actionPct = (status) =>
+  status === "done" ? 100 : status === "inprogress" ? 50 : 0;
 
-const pickDetail = (details = {}, ...keys) => {
-  for (const k of keys) {
-    const v = details?.[k];
-    if (v != null && String(v).trim()) return String(v).trim();
-  }
-  return "";
+// Display order for actions: Completed → In progress → Delayed → To do.
+// "Delayed" is its own bucket (overdue and not yet done).
+const actionRank = (task) => {
+  if (task.status === "done") return 0;
+  if (isOverdue(task.status, taskEndDate(task))) return 2;
+  if (task.status === "inprogress") return 1;
+  return 3;
+};
+const byActionOrder = (a, b) => actionRank(a) - actionRank(b);
+
+const getInitials = (name, email) => {
+  const s = String(name || email || "?").trim();
+  const parts = s.split(/[\s@._-]+/).filter(Boolean);
+  if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+  return s.slice(0, 2).toUpperCase();
 };
 
-// Hide keys already shown elsewhere on the card (task title, status chip,
-// assignee chip, dedicated date row, section header). Anything else from the
-// spreadsheet — Notes, etc. — renders as a labelled detail card.
-const HIDDEN_DETAIL_KEYS = new Set([
-  "phase",
-  "dimension",
-  "header",
-  "topic",
-  "category",
-  "initiative",
-  "outcome",
-  "task",
-  "tasks",
-  "action",
-  "actions",
-  "status",
-  "assignee",
-  "accountable",
-  "owner",
-  "sno",
-  "sno.",
-  "s.no",
-  "s.no.",
-  "s no",
-  "serial no",
-  "serial number",
-  "start date",
-  "startdate",
-  "start",
-  "end date",
-  "enddate",
-  "end",
-  "due date",
-  "duedate",
-]);
-
-const visibleDetails = (details = {}) =>
-  Object.entries(details).filter(
-    ([key, value]) =>
-      key &&
-      value &&
-      !HIDDEN_DETAIL_KEYS.has(
-        String(key).toLowerCase().replace(/\s+/g, " ").trim()
-      )
-  );
-
-// A single action row. HARTS Scope and SSC Scope are hidden behind a "Scopes"
-// button and only revealed when the user clicks it.
-function TaskRow({ task }) {
-  const [showScopes, setShowScopes] = useState(false);
-
-  const status = STATUS_STYLES[task.status] || STATUS_STYLES.todo;
-  const StatusIcon = status.Icon;
-
-  const startDate = pickDetail(
-    task.details,
-    "Start Date",
-    "Start",
-    "StartDate",
-    "start date",
-    "start"
-  );
-  const endDate = pickDetail(
-    task.details,
-    "End Date",
-    "End",
-    "Due Date",
-    "EndDate",
-    "end date",
-    "end",
-    "due date"
-  );
-
-  const hartsScope = pickDetail(
-    task.details,
-    "HARTS Scope",
-    "HARTS scope",
-    "Harts Scope",
-    "harts scope",
-    "HARTSScope"
-  );
-  const sscScope = pickDetail(
-    task.details,
-    "SSC Scope",
-    "SSC scope",
-    "Ssc Scope",
-    "ssc scope",
-    "SSCScope"
-  );
-  const hasScopes = Boolean(hartsScope || sscScope);
-
-  // Remaining detail fields (Notes, etc.) — minus the two scopes that now live
-  // behind the Scopes button.
-  const otherDetails = visibleDetails(task.details).filter(([key]) => {
-    const k = String(key).toLowerCase().replace(/\s+/g, " ").trim();
-    return k !== "harts scope" && k !== "ssc scope";
-  });
-
-  const assignee =
-    task.assignee ||
-    task.Assignee ||
-    task.details?.Assignee ||
-    task.details?.assignee ||
-    task.details?.Owner ||
-    task.details?.owner ||
-    "";
-
-  const overdue = isOverdue(task.status, endDate);
-
+// Thin progress ring (no fill) used for the overall progress indicator.
+function Ring({ pct, size = 46, stroke = 5, color = "#2563eb" }) {
+  const r = (size - stroke) / 2;
+  const c = 2 * Math.PI * r;
   return (
-    <div
-      className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"
-      style={{ borderLeft: `4px solid ${TASK_ACCENT}` }}
-    >
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="text-base font-semibold text-slate-900">{task.task}</div>
-        <span
-          className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold ${status.bg} ${status.text}`}
-        >
-          <StatusIcon className="h-3.5 w-3.5" />
-          {statusLabel(task.status)}
-        </span>
-        {assignee ? (
-          <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-600">
-            {assignee}
-          </span>
-        ) : null}
-        {overdue && (
-          <span className="group relative inline-flex items-center">
-            <AlertTriangle className="h-4 w-4 text-rose-500" />
-            <span className="pointer-events-none absolute left-1/2 top-full z-20 mt-1.5 hidden w-max max-w-[220px] -translate-x-1/2 rounded-md bg-slate-900 px-2.5 py-1.5 text-[11px] font-medium text-white shadow-lg group-hover:block">
-              Deadline has passed. Immediate action is required.
-            </span>
-          </span>
-        )}
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="#e2e8f0" strokeWidth={stroke} />
+      <circle
+        cx={size / 2}
+        cy={size / 2}
+        r={r}
+        fill="none"
+        stroke={color}
+        strokeWidth={stroke}
+        strokeLinecap="round"
+        strokeDasharray={c}
+        strokeDashoffset={c - (c * pct) / 100}
+        transform={`rotate(-90 ${size / 2} ${size / 2})`}
+      />
+    </svg>
+  );
+}
+
+function StatCard({ Icon, value, label, bg, fg }) {
+  return (
+    <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3">
+      <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${bg}`}>
+        <Icon className={`h-5 w-5 ${fg}`} />
+      </span>
+      <div className="min-w-0">
+        <div className="text-xl font-extrabold leading-none text-slate-900">{value}</div>
+        <div className="mt-1 text-xs font-medium text-slate-500">{label}</div>
       </div>
-
-      <div className="mt-3 flex flex-wrap items-center gap-2">
-        <div className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs text-slate-600">
-          <CalendarRange className="h-3.5 w-3.5 text-slate-500" />
-          <span className="font-semibold uppercase tracking-wider text-[10px] text-slate-500">
-            Start
-          </span>
-          <span className="font-semibold text-slate-800">{startDate || "—"}</span>
-          <span className="mx-1 text-slate-300">·</span>
-          <span className="font-semibold uppercase tracking-wider text-[10px] text-slate-500">
-            End
-          </span>
-          <span
-            className={`font-semibold ${overdue ? "text-rose-600" : "text-slate-800"}`}
-          >
-            {endDate || "—"}
-          </span>
-        </div>
-
-        {hasScopes && (
-          <button
-            type="button"
-            onClick={() => setShowScopes((v) => !v)}
-            aria-expanded={showScopes}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition-colors hover:bg-slate-50 hover:text-slate-900"
-          >
-            <Layers className="h-3.5 w-3.5 text-slate-500" />
-            Scopes
-            <ChevronDown
-              className={`h-3.5 w-3.5 transition-transform duration-200 ${
-                showScopes ? "rotate-180" : ""
-              }`}
-            />
-          </button>
-        )}
-      </div>
-
-      {showScopes && hasScopes && (
-        <div className="mt-3 grid gap-2 sm:grid-cols-2">
-          {hartsScope && (
-            <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
-              <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
-                HARTS Scope
-              </div>
-              <div className="mt-1 text-sm text-slate-700">{hartsScope}</div>
-            </div>
-          )}
-          {sscScope && (
-            <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
-              <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
-                SSC Scope
-              </div>
-              <div className="mt-1 text-sm text-slate-700">{sscScope}</div>
-            </div>
-          )}
-        </div>
-      )}
-
-      {otherDetails.length > 0 && (
-        <div className="mt-3 grid gap-2 sm:grid-cols-2">
-          {otherDetails.map(([key, value]) => (
-            <div key={key} className="rounded-lg bg-slate-50 px-3 py-2">
-              <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
-                {fieldLabel(key)}
-              </div>
-              <div className="mt-1 text-sm text-slate-700">{String(value)}</div>
-            </div>
-          ))}
-        </div>
-      )}
     </div>
   );
 }
 
-export default function HeaderDetailView({ item, onBack, onToggle, canEdit = true }) {
+// One action card with a clickable Outcome reveal and an overdue warning.
+function ActionRow({ task }) {
+  const [showOutcome, setShowOutcome] = useState(false);
+
+  const status = STATUS_STYLES[task.status] || STATUS_STYLES.todo;
+  const StatusIcon = status.Icon;
+  const pct = actionPct(task.status);
+  const start = taskStartDate(task);
+  const end = taskEndDate(task);
+  const overdue = isOverdue(task.status, end);
+  const accountable = taskAccountable(task);
+  const outcome = task.outcome || "";
+
+  return (
+    <div
+      className="rounded-xl border border-slate-200 bg-white py-3 pl-4 pr-3"
+      style={{ borderLeft: `4px solid ${status.bar}` }}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="text-[15px] font-bold text-slate-900">{task.task}</div>
+            <span
+              className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold ${status.bg} ${status.text}`}
+            >
+              <StatusIcon className="h-3.5 w-3.5" />
+              {statusLabel(task.status)}
+            </span>
+            {overdue && (
+              <span className="group relative inline-flex items-center">
+                <AlertTriangle className="h-4 w-4 text-rose-500" />
+                <span className="pointer-events-none absolute left-1/2 top-full z-20 mt-1.5 hidden w-max max-w-[220px] -translate-x-1/2 rounded-md bg-slate-900 px-2.5 py-1.5 text-[11px] font-medium text-white shadow-lg group-hover:block">
+                  Deadline has passed. Immediate action is required.
+                </span>
+              </span>
+            )}
+          </div>
+
+          <div className="mt-2.5 flex flex-wrap items-center gap-x-5 gap-y-1.5 text-xs text-slate-500">
+            <span className="inline-flex items-center gap-1.5">
+              <CalendarDays className="h-3.5 w-3.5 text-slate-400" />
+              {formatDate(start)}
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <CalendarCheck className="h-3.5 w-3.5 text-slate-400" />
+              <span className={overdue ? "font-semibold text-rose-600" : ""}>
+                {formatDate(end)}
+              </span>
+            </span>
+            {accountable ? (
+              <span className="inline-flex items-center gap-1.5">
+                <Users className="h-3.5 w-3.5 text-slate-400" />
+                <span className="font-medium text-slate-700">{accountable}</span>
+                <span className="text-slate-400">(Accountable)</span>
+              </span>
+            ) : null}
+            {outcome ? (
+              <button
+                type="button"
+                onClick={() => setShowOutcome((v) => !v)}
+                aria-expanded={showOutcome}
+                className="inline-flex items-center gap-1.5 font-semibold text-slate-600 transition-colors hover:text-slate-900"
+              >
+                <Target className="h-3.5 w-3.5 text-slate-400" />
+                Outcome
+                <ChevronDown
+                  className={`h-3.5 w-3.5 transition-transform duration-200 ${
+                    showOutcome ? "rotate-180" : ""
+                  }`}
+                />
+              </button>
+            ) : null}
+          </div>
+
+          {showOutcome && outcome ? (
+            <div className="mt-2.5 rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-600">
+              {outcome}
+            </div>
+          ) : null}
+
+          <div className="mt-3 flex items-center gap-3">
+            <div className="h-1.5 max-w-md flex-1 overflow-hidden rounded-full bg-slate-100">
+              <div
+                className="h-full rounded-full"
+                style={{ width: `${pct}%`, background: status.bar }}
+              />
+            </div>
+            <span className="shrink-0 text-xs font-semibold" style={{ color: status.bar }}>
+              {pct}% Complete
+            </span>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          className="shrink-0 rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600"
+          aria-label="More"
+        >
+          <MoreVertical className="h-4 w-4" />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// Expanded or collapsed initiative block.
+function InitiativeBlock({ initiative, theme, expanded, onToggle }) {
+  const stats = initiative.stats || computeStats(initiative.tasks);
+  const pct = stats.pct;
+  const outcome = initiative.tasks?.[0]?.outcome || "";
+  const Icon = theme.Icon;
+
+  if (!expanded) {
+    return (
+      <button
+        type="button"
+        onClick={onToggle}
+        className="flex w-full items-center gap-4 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-left transition-colors hover:bg-slate-50/70"
+      >
+        <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${theme.bg}`}>
+          <Icon className={`h-5 w-5 ${theme.fg}`} />
+        </span>
+        <div className="min-w-0 flex-1">
+          <div className="font-bold text-slate-900">{initiative.name}</div>
+          {outcome ? (
+            <div className="truncate text-sm text-slate-500">{outcome}</div>
+          ) : null}
+        </div>
+        <div className="hidden w-44 shrink-0 sm:block">
+          <div className="flex items-center justify-end gap-2">
+            <span className="text-sm font-bold" style={{ color: theme.color }}>
+              {pct}%
+            </span>
+          </div>
+          <div className="text-right text-[11px] text-slate-400">
+            {stats.done} / {stats.total} Actions Completed
+          </div>
+          <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
+            <div
+              className="h-full rounded-full"
+              style={{ width: `${pct}%`, background: theme.color }}
+            />
+          </div>
+        </div>
+        <ChevronDown className="h-5 w-5 shrink-0 text-slate-400" />
+      </button>
+    );
+  }
+
+  const orderedTasks = [...initiative.tasks].sort(byActionOrder);
+
+  return (
+    <div
+      className="rounded-2xl border border-slate-200 bg-white"
+      style={{ borderLeft: `4px solid ${theme.color}` }}
+    >
+      <div className="flex items-start gap-4 p-4">
+        <span className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full ${theme.bg}`}>
+          <Icon className={`h-6 w-6 ${theme.fg}`} />
+        </span>
+        <div className="min-w-0 flex-1">
+          <div className="text-lg font-bold text-slate-900">{initiative.name}</div>
+          {outcome ? <div className="text-sm text-slate-500">{outcome}</div> : null}
+        </div>
+        <div className="hidden w-56 shrink-0 sm:block">
+          <div className="text-right text-2xl font-extrabold" style={{ color: theme.color }}>
+            {pct}%
+          </div>
+          <div className="text-right text-xs text-slate-400">
+            {stats.done} / {stats.total} Actions Completed
+          </div>
+          <div className="mt-1.5 h-2 w-full overflow-hidden rounded-full bg-slate-100">
+            <div
+              className="h-full rounded-full"
+              style={{ width: `${pct}%`, background: theme.color }}
+            />
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={onToggle}
+          className="shrink-0 rounded-lg border border-slate-200 p-1.5 text-slate-500 transition-colors hover:bg-slate-50"
+          aria-label="Collapse"
+        >
+          <ChevronUp className="h-5 w-5" />
+        </button>
+      </div>
+
+      <div className="space-y-3 px-4 pb-4">
+        {orderedTasks.map((task, idx) => (
+          <ActionRow key={`${initiative.name}-${idx}-${task.task}`} task={task} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+export default function HeaderDetailView({ item, onBack, userName, userEmail }) {
+  const initiatives = item?.initiatives || [];
+  const [openInitiative, setOpenInitiative] = useState(
+    initiatives[0]?.name || null
+  );
+
   if (!item) return null;
 
   const allTasks = item.tasks || [];
   const stats = computeStats(allTasks);
-  const progressColor = getProgressColor(stats.pct);
-  const initiatives = item.initiatives || [];
-  const headerDetails = visibleDetails(allTasks[0]?.details);
-  const phaseColor = PHASE_COLORS[item.phase]?.solid || "#00437A";
+  const delayed = allTasks.filter((t) => isOverdue(t.status, taskEndDate(t))).length;
+
+  const toggleInitiative = (name) =>
+    setOpenInitiative((prev) => (prev === name ? null : name));
+
+  const statCards = [
+    { Icon: Briefcase, value: initiatives.length, label: "Initiatives", bg: "bg-violet-100", fg: "text-violet-500" },
+    { Icon: ListChecks, value: stats.total, label: "Actions", bg: "bg-blue-100", fg: "text-blue-500" },
+    { Icon: CheckCircle2, value: stats.done, label: "Completed", bg: "bg-emerald-100", fg: "text-emerald-500" },
+    { Icon: Clock, value: stats.inprog, label: "In Progress", bg: "bg-orange-100", fg: "text-orange-500" },
+    { Icon: Hourglass, value: stats.todo, label: "Not Started", bg: "bg-amber-100", fg: "text-amber-500" },
+    { Icon: AlertCircle, value: delayed, label: "Delayed", bg: "bg-rose-100", fg: "text-rose-500" },
+  ];
 
   return (
-    <div className="min-h-screen w-full bg-white">
-      <div className="sticky top-0 z-30 border-b border-slate-200 bg-white/90 backdrop-blur">
-        <div className="h-1 w-full" style={{ background: phaseColor }} />
-        <div className="mx-auto flex max-w-[1600px] flex-wrap items-center justify-between gap-4 px-6 py-2.5">
+    <div className="min-h-screen w-full bg-slate-100 p-2 sm:p-4">
+      <div className="mx-auto flex max-w-[1600px] overflow-hidden rounded-3xl bg-white shadow-sm ring-1 ring-slate-200/70">
+        {/* Sidebar */}
+        <aside className="hidden w-[260px] shrink-0 flex-col border-r border-slate-200 bg-slate-50/40 p-4 lg:flex">
           <button
             type="button"
             onClick={onBack}
-            className="inline-flex h-9 items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-[13px] font-semibold text-slate-700 transition-colors hover:bg-slate-50 hover:text-slate-900"
+            className="inline-flex h-9 w-fit items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-[13px] font-semibold text-slate-700 transition-colors hover:bg-slate-50 hover:text-slate-900"
           >
             <ArrowLeft className="h-4 w-4" />
             Dashboard
           </button>
 
-          <div className="text-center">
-            <div className="text-[10.5px] font-semibold uppercase tracking-[0.18em] text-slate-400">
-              Header details
-            </div>
-            <div className="text-[17px] font-bold text-slate-900">{item.header}</div>
-            <div className="text-[13px] text-slate-500">
-              {item.phase} · {item.dimension}
-            </div>
+          <div className="mt-6 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+            Initiatives
           </div>
 
-          <div className="flex items-center gap-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5">
-            <div>
-              <div className="text-[10.5px] font-semibold uppercase tracking-wider text-slate-400">
-                Progress
-              </div>
-              <div className="text-[18px] font-bold" style={{ color: progressColor }}>
-                {stats.pct}%
-              </div>
-            </div>
-            <ProgressCircle pct={stats.pct} size={44} />
-          </div>
-        </div>
-      </div>
-
-      <div className="mx-auto grid max-w-[1600px] grid-cols-1 gap-5 px-5 py-6 xl:grid-cols-[360px_1fr]">
-        <aside className="space-y-5 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <div>
-            <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-              <LayoutGrid className="h-4 w-4" />
-              Header overview
-            </div>
-            <div className="mt-2 text-2xl font-bold text-slate-900">{item.header}</div>
-            <div className="mt-1 text-sm text-slate-500">
-              {item.locked
-                ? "Yet to begin. Complete the first two phases to unlock this phase."
-                : "Review the initiatives and actions tracked under this header."}
-            </div>
-          </div>
-
-          <div
-            className="rounded-xl border border-slate-200 bg-white p-4"
-            style={{ borderLeft: `4px solid ${phaseColor}` }}
-          >
-            <div className="flex items-center gap-2 text-sm font-semibold text-slate-700">
-              <ListChecks className="h-4 w-4 text-slate-400" />
-              Initiatives
-            </div>
-
-            <div className="mt-3 flex items-center justify-between gap-3">
-              <div>
-                <div className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-                  Total initiatives
-                </div>
-                <div className="mt-0.5 text-3xl font-bold text-slate-900">
-                  {initiatives.length}
-                </div>
-              </div>
-              <ProgressCircle pct={stats.pct} size={52} />
-            </div>
-
-            {/* Each initiative with its own progress */}
-            <div className="mt-4 space-y-3 border-t border-slate-100 pt-4">
-              {initiatives.map((ini) => {
-                const pct = ini.stats?.pct ?? 0;
-                const color = getProgressColor(pct);
-                return (
-                  <div key={ini.name}>
-                    <div className="flex items-center justify-between gap-3">
+          <div className="mt-3 flex-1 space-y-1.5 overflow-y-auto">
+            {initiatives.map((ini, index) => {
+              const theme = themeFor(index);
+              const pct = ini.stats?.pct ?? 0;
+              const active = openInitiative === ini.name;
+              return (
+                <button
+                  key={ini.name}
+                  type="button"
+                  onClick={() => setOpenInitiative(ini.name)}
+                  className={`w-full rounded-xl px-3 py-2.5 text-left transition-colors ${
+                    active ? theme.tint : "hover:bg-slate-100"
+                  }`}
+                  style={active ? { boxShadow: `inset 3px 0 0 ${theme.color}` } : undefined}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="flex min-w-0 items-center gap-2">
+                      <span
+                        className="h-2 w-2 shrink-0 rounded-full"
+                        style={{ background: theme.color }}
+                      />
                       <span className="truncate text-sm font-medium text-slate-700">
                         {ini.name}
                       </span>
-                      <span
-                        className="shrink-0 text-sm font-bold tabular-nums"
-                        style={{ color }}
-                      >
-                        {pct}%
-                      </span>
-                    </div>
-                    <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
-                      <div
-                        className="h-full rounded-full transition-all"
-                        style={{ width: `${pct}%`, background: color }}
-                      />
-                    </div>
+                    </span>
+                    <span className="shrink-0 text-xs font-bold" style={{ color: theme.color }}>
+                      {pct}%
+                    </span>
                   </div>
-                );
-              })}
-            </div>
+                  <div className="mt-1.5 h-1 w-full overflow-hidden rounded-full bg-slate-200/70">
+                    <div
+                      className="h-full rounded-full"
+                      style={{ width: `${pct}%`, background: theme.color }}
+                    />
+                  </div>
+                </button>
+              );
+            })}
           </div>
-
-          {/* {headerDetails.length > 0 && (
-            <div className="rounded-xl border border-slate-200 bg-white p-4">
-              <div className="text-sm font-semibold text-slate-700">Excel fields</div>
-              <div className="mt-3 space-y-2">
-                {headerDetails.map(([key, value]) => (
-                  <div key={key} className="rounded-lg bg-slate-50 px-3 py-2">
-                    <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
-                      {fieldLabel(key)}
-                    </div>
-                    <div className="mt-1 text-sm text-slate-800">{String(value)}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )} */}
         </aside>
 
-        <main className="space-y-5 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 pb-4">
-            <div>
-              <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-                Initiative breakdown
+        {/* Main */}
+        <main className="min-w-0 flex-1 p-5 sm:p-6">
+          {/* Header */}
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div className="min-w-0">
+              <div className="lg:hidden">
+                <button
+                  type="button"
+                  onClick={onBack}
+                  className="mb-3 inline-flex h-9 items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-[13px] font-semibold text-slate-700 hover:bg-slate-50"
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                  Dashboard
+                </button>
               </div>
-              <div className="mt-1 text-lg font-bold text-slate-900">
-                Actions grouped under each initiative
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+                <h1 className="text-2xl font-extrabold tracking-tight text-slate-900 sm:text-3xl">
+                  {item.header}
+                </h1>
+                {/* Overall progress, right after the header */}
+                <div className="flex items-center gap-2">
+                  <Ring pct={stats.pct} size={44} />
+                  <div className="leading-none">
+                    <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+                      Overall
+                    </div>
+                    <div className="mt-0.5 text-xl font-extrabold text-blue-600">
+                      {stats.pct}%
+                    </div>
+                  </div>
+                </div>
               </div>
+              <p className="mt-1 text-sm text-slate-500">
+                Tracking {stats.total} actions across {initiatives.length}{" "}
+                {initiatives.length === 1 ? "initiative" : "initiatives"} · {item.phase} ·{" "}
+                {item.dimension}
+              </p>
             </div>
+
+            <span
+              className="flex h-10 w-10 items-center justify-center rounded-full text-sm font-bold text-white"
+              style={{ background: "#1e293b" }}
+              title={userEmail || userName || ""}
+            >
+              {getInitials(userName, userEmail)}
+            </span>
           </div>
+
+          {/* Stat cards */}
+          <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6">
+            {statCards.map((c) => (
+              <StatCard key={c.label} {...c} />
+            ))}
+          </div>
+
+          {/* Initiatives */}
           {item.locked ? (
-            <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-6 text-center text-sm text-slate-600">
-              Optimize tasks will appear once Establish and Enhance are fully complete.
+            <div className="mt-5 rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-4 py-10 text-center text-sm text-slate-600">
+              These actions will appear once the earlier phases are fully complete.
             </div>
           ) : (
-            <div className="grid gap-4">
-              {initiatives.map((initiative) => {
-                const sectionStats = computeStats(initiative.tasks);
-                const sectionColor = getProgressColor(sectionStats.pct);
-
-                return (
-                  <section
-                    key={initiative.name}
-                    className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"
-                    style={{ borderLeft: `4px solid ${phaseColor}` }}
-                  >
-                    <div className="flex flex-wrap items-center justify-between gap-3">
-                      <div className="min-w-0">
-                        <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-                          Initiative
-                        </div>
-                        <div className="mt-1 text-xl font-bold text-slate-900">{initiative.name}</div>
-                        {initiative.tasks?.[0]?.outcome ? (
-                          <div className="mt-1 max-w-2xl text-sm text-slate-500">
-                            {initiative.tasks[0].outcome}
-                          </div>
-                        ) : null}
-                      </div>
-                      <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-3 py-2 shadow-sm">
-                        <div className="text-right">
-                          <div className="text-[11px] uppercase tracking-wider text-slate-500">
-                            Progress
-                          </div>
-                          <div className="text-lg font-bold" style={{ color: sectionColor }}>
-                            {sectionStats.pct}%
-                          </div>
-                        </div>
-                        <ProgressCircle pct={sectionStats.pct} size={42} />
-                      </div>
-                    </div>
-
-                    <div className="mt-4 grid gap-3">
-                      {[...initiative.tasks].sort(byStatusOrder).map((task, idx) => (
-                        <TaskRow
-                          key={`${initiative.name}-${idx}-${task.task}`}
-                          task={task}
-                        />
-                      ))}
-                    </div>
-                  </section>
-                );
-              })}
+            <div className="mt-5 space-y-3">
+              {initiatives.map((ini, index) => (
+                <InitiativeBlock
+                  key={ini.name}
+                  initiative={ini}
+                  theme={themeFor(index)}
+                  expanded={openInitiative === ini.name}
+                  onToggle={() => toggleInitiative(ini.name)}
+                />
+              ))}
             </div>
           )}
         </main>

@@ -466,36 +466,26 @@ export default function HeaderDetailView({ item, onBack, userName, userEmail }) 
                   Dashboard
                 </button>
               </div>
-              <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
-                Topic
-              </div>
-              <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-2">
+              <div className="flex items-center gap-x-4">
                 <RagIcon
                   level={headerLevel}
                   size={34}
                   title={`${RAG_LABEL[headerLevel]} — initiative health`}
                 />
-                <h1 className="text-2xl font-extrabold tracking-tight text-slate-900 sm:text-3xl">
-                  {item.header}
-                </h1>
-                {/* Overall progress, right after the header */}
-                {/* <div className="flex items-center gap-2">
-                  <Ring pct={stats.pct} size={44} />
-                  <div className="leading-none">
-                    <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
-                      Overall
-                    </div>
-                    <div className="mt-0.5 text-xl font-extrabold text-blue-600">
-                      {stats.pct}%
-                    </div>
+                <div className="min-w-0 pl-2">
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+                    Topic
                   </div>
-                </div> */}
+                  <h1 className="text-2xl font-extrabold tracking-tight text-slate-900 sm:text-3xl">
+                    {item.header}
+                  </h1>
+                  <p className="mt-1 text-sm text-slate-500">
+                    Tracking {stats.total} actions across {initiatives.length}{" "}
+                    {initiatives.length === 1 ? "initiative" : "initiatives"} · {item.phase} ·{" "}
+                    {item.dimension}
+                  </p>
+                </div>
               </div>
-              <p className="mt-1 text-sm text-slate-500">
-                Tracking {stats.total} actions across {initiatives.length}{" "}
-                {initiatives.length === 1 ? "initiative" : "initiatives"} · {item.phase} ·{" "}
-                {item.dimension}
-              </p>
             </div>
 
             <span

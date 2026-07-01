@@ -3,15 +3,6 @@ import { motion } from "framer-motion";
 import ProgressCircle from "./ProgressCircle.jsx";
 import { PHASE_COLORS } from "../constants.js";
 
-// A short sentence describing overall progress for the header.
-const progressStatement = (pct) => {
-  if (pct >= 100) return "All actions completed";
-  if (pct >= 70) return "On track to completion";
-  if (pct >= 30) return "Making steady progress";
-  if (pct > 0) return "Early progress underway";
-  return "Not started yet";
-};
-
 export default function TooltipModal({ item, anchor, containerRect }) {
   if (!item || !anchor || !containerRect) return null;
 
@@ -67,19 +58,6 @@ export default function TooltipModal({ item, anchor, containerRect }) {
             style={{ fontSize: 14 }}
           >
             {item.category}
-          </div>
-        </div>
-
-        {/* Overall progress statement */}
-        <div className="px-4 py-3 flex items-center gap-3 border-b border-slate-100">
-          <ProgressCircle pct={item.stats.pct} size={44} />
-          <div className="min-w-0 flex-1">
-            <div className="text-[13px] font-bold text-slate-900 leading-tight">
-              {progressStatement(item.stats.pct)}
-            </div>
-            <div className="text-[11px] text-slate-500 mt-0.5">
-              {item.stats.done} of {item.stats.total} actions completed
-            </div>
           </div>
         </div>
 

@@ -19,8 +19,8 @@ const encodeShareUrl = (url) => {
   return "u!" + base64.replace(/=+$/, "").replace(/\//g, "_").replace(/\+/g, "-");
 };
 
-const shareItemPath = () =>
-  `${GRAPH_BASE}/shares/${encodeShareUrl(EXCEL_FILE_URL)}/driveItem`;
+const shareItemPath = (fileUrl = EXCEL_FILE_URL) =>
+  `${GRAPH_BASE}/shares/${encodeShareUrl(fileUrl)}/driveItem`;
 
 // Get a valid access token. Tries silent first; if MSAL needs interaction
 // (e.g. consent or expired session) it falls back to a popup.
@@ -62,17 +62,18 @@ const graphFetch = async (msalInstance, url, init = {}) => {
 };
 
 // Cheap metadata check — returns the file's lastModifiedDateTime (string).
-export const getFileLastModified = async (msalInstance) => {
+export const getFileLastModified = async (msalInstance, fileUrl = EXCEL_FILE_URL) => {
   const response = await graphFetch(
     msalInstance,
-    `${shareItemPath()}?select=lastModifiedDateTime,id,name`
+    `${shareItemPath(fileUrl)}?select=lastModifiedDateTime,id,name`
   );
   const json = await response.json();
   return json.lastModifiedDateTime;
 };
 
-// Full download — returns the .xlsx as an ArrayBuffer for SheetJS.
-export const downloadFileBuffer = async (msalInstance) => {
-  const response = await graphFetch(msalInstance, `${shareItemPath()}/content`);
+// Full download — returns the .xlsx as an ArrayBuffer for SheetJS. Defaults to
+// the main workbook; pass a share URL to fetch another file (e.g. the FMEA one).
+export const downloadFileBuffer = async (msalInstance, fileUrl = EXCEL_FILE_URL) => {
+  const response = await graphFetch(msalInstance, `${shareItemPath(fileUrl)}/content`);
   return response.arrayBuffer();
 };

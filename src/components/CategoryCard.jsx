@@ -1,7 +1,8 @@
 import React from "react";
 import { motion } from "framer-motion";
-import ProgressCircle from "./ProgressCircle.jsx";
+import RagIcon from "./RagIcon.jsx";
 import { HEADER_H } from "../constants.js";
+import { headerRag, RAG_LABEL } from "../utils.js";
 
 /**
  * CategoryCard
@@ -17,7 +18,8 @@ export default function CategoryCard({
   index,
   onClick,
 }) {
-  const { category, stats, locked, lockedMessage } = item;
+  const { category, locked, lockedMessage } = item;
+  const rag = headerRag(item.initiatives);
 
   // Width caps prevent overlap with curves
   const maxWidth =
@@ -61,9 +63,9 @@ export default function CategoryCard({
         {category}
       </div>
 
-      {/* Percentage only */}
+      {/* RAG status */}
       <div className="mt-2 flex items-center">
-        <ProgressCircle pct={stats.pct} size={42} />
+        <RagIcon level={rag} size={32} title={RAG_LABEL[rag]} />
       </div>
 
       {/* Hover glow */}

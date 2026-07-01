@@ -53,9 +53,9 @@ export const CATEGORY_POSITIONS = {
   "Enhance::Technology::S/4 HANA": { x: 600, y: 440},
 
   // ── Optimize · People ──
-  "Optimize::People::Performance Culture": { x: 812, y: 24 },
-  "Optimize::People::Learning Organization": { x: 962, y: 24 },
-  "Optimize::People::Employee Experience": { x: 1114, y: 22 },
+  "Optimize::People::Performance Culture": { x: 812, y: 34 },
+  "Optimize::People::Learning Organization": { x: 962, y: 34 },
+  "Optimize::People::Employee Experience": { x: 1114, y: 32 },
   // ── Optimize · Process ──
   "Optimize::Process::Core Business Transitions": { x: 842, y: 206 },
   "Optimize::Process::Process Excellence": { x: 1052, y: 158 },

@@ -8,6 +8,7 @@ import CategoryCard from "./CategoryCard.jsx";
 import TooltipModal from "./TooltipModal.jsx";
 import HeaderDetailView from "./HeaderDetailView.jsx";
 import AccountMenu from "./AccountMenu.jsx";
+import RagLegend from "./RagLegend.jsx";
 
 import { CANVAS_W, CANVAS_H } from "../constants.js";
 import { flattenForRender, computeStats, getProgressColor } from "../utils.js";
@@ -86,7 +87,7 @@ export default function DashboardCanvas({
   // ║     inside the card. Raise it to match the left/right gutters.         ║
   // ╚══════════════════════════════════════════════════════════════════════╝
   const DASHBOARD_SIZE = 1.0;
-  const DASHBOARD_HEIGHT = 0.89;
+  const DASHBOARD_HEIGHT = 0.9;
   const TOP_BOTTOM_SPACE = 20;
 
   // Uniform scale (keeps the chart's aspect ratio — no horizontal stretch).
@@ -200,7 +201,7 @@ export default function DashboardCanvas({
 
         {/* Stats + actions + account */}
         <div className="flex items-center gap-2.5">
-          <div className="flex h-9 items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3">
+          {/* <div className="flex h-9 items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3">
             <span className="text-[10.5px] font-semibold uppercase tracking-wider text-slate-400">
               Overall
             </span>
@@ -213,7 +214,7 @@ export default function DashboardCanvas({
             <span className="text-[12px] font-medium text-slate-400">
               {totalStats.done}/{totalStats.total}
             </span>
-          </div>
+          </div> */}
 
           {sheetSyncStatus ? (
             <span className="hidden max-w-[150px] truncate text-[11px] text-slate-400 xl:inline">
@@ -323,6 +324,9 @@ export default function DashboardCanvas({
           </div>
         </motion.div>
       </div>
+
+      {/* Status legend */}
+      <RagLegend />
     </div>
   );
 }

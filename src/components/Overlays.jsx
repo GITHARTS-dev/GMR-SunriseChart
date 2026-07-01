@@ -10,8 +10,27 @@ import {
 } from "../constants.js";
 
 export function PhaseHeaders() {
+  const bandStart = PHASE_BANDS.Establish.x0;
+  const bandEnd = PHASE_BANDS.Optimize.x1;
   return (
     <>
+      {/* Timeline band — spans the full phase area above the phase headers */}
+      <div
+        className="absolute flex items-center justify-center font-bold tracking-wide text-[#1A2F5C] select-none"
+        style={{
+          left: bandStart,
+          top: -8,
+          width: bandEnd - bandStart,
+          height: 34,
+          background: "#EFF1F4",
+          fontSize: 17,
+          letterSpacing: "0.02em",
+          zIndex: 12,
+        }}
+      >
+        12 to 18 Months
+      </div>
+
       {["Establish", "Enhance", "Optimize"].map((phase) => {
         const band = PHASE_BANDS[phase];
         const width = band.x1 - band.x0;
@@ -21,7 +40,7 @@ export function PhaseHeaders() {
             className="absolute flex items-center justify-center font-bold tracking-wide text-white select-none"
             style={{
               left: band.x0,
-              top: 16,
+              top: 28,
               width,
               height: HEADER_H,
               background: PHASE_COLORS[phase].header,
@@ -59,7 +78,7 @@ export function AxisLabels() {
         className="absolute font-bold tracking-[0.2em] text-[#1A2F5C] select-none"
         style={{
           left: 38,
-          top: HEADER_H + 365,
+          top: HEADER_H + 450,
           fontSize: 16,
           transform: "rotate(-90deg)",
           transformOrigin: "left top",

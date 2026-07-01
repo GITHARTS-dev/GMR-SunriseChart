@@ -19,6 +19,13 @@ export const TENANT_ID = import.meta.env.VITE_TENANT_ID;
 // Site/Drive/Item IDs needed.
 export const EXCEL_FILE_URL = import.meta.env.VITE_EXCEL_FILE_URL;
 
+// The SharePoint FMEA (risk register) workbook — a separate file whose rows are
+// matched to initiatives by name. Falls back to the shared link if the env var
+// is unset. Set VITE_FMEA_FILE_URL to override in dev/prod.
+export const FMEA_FILE_URL =
+  import.meta.env.VITE_FMEA_FILE_URL ||
+  "https://gobalharts.sharepoint.com/:x:/s/HARTSConsulting/IQDmlBTIKCOAQJaNGDiJl4TTAT4n9i0ButxdUHfJ_Ag-ZCE?e=YXx6Fk";
+
 // Comma-separated list of emails allowed to toggle task completion (everyone
 // else is read-only). e.g. VITE_ADMIN_EMAILS="a@x.com,b@x.com"
 export const ADMIN_EMAILS = String(import.meta.env.VITE_ADMIN_EMAILS || "")

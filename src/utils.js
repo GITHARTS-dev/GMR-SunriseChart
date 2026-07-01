@@ -24,6 +24,218 @@ export const computeStats = (tasks) => {
   return { total, done, inprog, todo, pct };
 };
 
+// ── Dates & RAG (Red / Amber / Green) status ─────────────────────────────────
+
+// Pull the first non-empty value among the given detail keys.
+export const pickDetail = (details = {}, ...keys) => {
+  for (const k of keys) {
+    const v = details?.[k];
+    if (v != null && String(v).trim()) return String(v).trim();
+  }
+  return "";
+};
+
+// Parse the assorted Excel date formats (M/D/YYYY, M/D/YY, D-M-YYYY, YYYY-MM-DD).
+export const parseDate = (value) => {
+  const s = String(value || "").trim();
+  if (!s) return null;
+  const parts = s.split(/[/\-.]/).map((p) => p.trim());
+  if (parts.length === 3 && parts.every((p) => /^\d+$/.test(p))) {
+    let [a, b, c] = parts.map(Number);
+    let year;
+    let month;
+    let day;
+    if (String(parts[0]).length === 4) {
+      year = a;
+      month = b;
+      day = c;
+    } else {
+      year = c < 100 ? 2000 + c : c;
+      if (a > 12) {
+        day = a;
+        month = b;
+      } else {
+        month = a;
+        day = b;
+      }
+    }
+    const d = new Date(year, month - 1, day);
+    return Number.isNaN(d.getTime()) ? null : d;
+  }
+  const d = new Date(s);
+  return Number.isNaN(d.getTime()) ? null : d;
+};
+
+// The task's start date string, across the various sheet column names.
+export const taskStartDate = (task) =>
+  pickDetail(task.details, "Start Date", "Start", "StartDate", "start date", "start");
+
+// The task's due/end date string, across the various sheet column names.
+export const taskEndDate = (task) =>
+  pickDetail(
+    task.details,
+    "End Date",
+    "End",
+    "Due Date",
+    "EndDate",
+    "end date",
+    "end",
+    "due date"
+  );
+
+// An action is "delayed" when its deadline has passed and it isn't done.
+export const isOverdue = (status, endValue) => {
+  if (status === "done") return false;
+  const end = parseDate(endValue);
+  if (!end) return false;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return end < today;
+};
+
+// An action with no start date and no end date drives the purple state: an
+// initiative whose actions are all missing both dates is treated as
+// unscheduled / not started.
+export const hasNoDates = (task) =>
+  !taskStartDate(task) && !taskEndDate(task);
+
+export const RAG_COLORS = {
+  green: "#16a34a",
+  amber: "#f59e0b",
+  red: "#ef4444",
+  purple: "#8b5cf6",
+};
+export const RAG_LABEL = {
+  green: "On track",
+  amber: "At risk",
+  red: "Delayed",
+  purple: "Not started",
+};
+export const getRagColor = (level) => RAG_COLORS[level] || RAG_COLORS.green;
+
+// Number of actions that are overdue and not yet completed.
+export const delayedCount = (tasks = []) =>
+  tasks.filter((t) => isOverdue(t.status, taskEndDate(t))).length;
+
+// Per-initiative RAG: every action missing both start and end date → purple;
+// otherwise no delayed actions → green, exactly one delayed → amber,
+// more than one delayed → red.
+export const initiativeRag = (initiative) => {
+  const tasks = initiative?.tasks || [];
+  if (tasks.length > 0 && tasks.every(hasNoDates)) return "purple";
+  const d = delayedCount(tasks);
+  if (d === 0) return "green";
+  if (d === 1) return "amber";
+  return "red";
+};
+
+// Header RAG from its initiatives:
+//   1. any red initiative               → red
+//   2. any amber, ≤ 50% of initiatives   → amber
+//   3. any amber, > 50% of initiatives   → red
+//   4. every initiative purple           → purple
+//   5. otherwise                         → green
+export const headerRag = (initiatives = []) => {
+  const rags = initiatives.map((ini) => initiativeRag(ini));
+  const total = rags.length;
+  if (rags.some((r) => r === "red")) return "red";
+  const amber = rags.filter((r) => r === "amber").length;
+  if (amber > 0) return (amber / total) * 100 > 50 ? "red" : "amber";
+  if (total > 0 && rags.every((r) => r === "purple")) return "purple";
+  return "green";
+};
+
+// ── FMEA / risk (Failure Mode & Effects Analysis) ────────────────────────────
+//
+// Each initiative can carry one FMEA record parsed from the FMEA workbook (any
+// initiative matching more than one row keeps them all). A risk looks like:
+//   { failureMode, effect, cause, controls, rpn, level,
+//     recommended, accountable, responsible }
+
+// Risk level shares the RAG palette: High=red, Medium=amber, Low=green.
+export const RISK_COLORS = { high: "#ef4444", medium: "#f59e0b", low: "#16a34a" };
+export const RISK_LABEL = { high: "High", medium: "Medium", low: "Low" };
+
+// Decide High/Medium/Low. Trust the sheet's explicit "Risk" column when present;
+// fall back to RPN thresholds (High ≥ 100, Medium 40–99, Low < 40) when blank.
+export const riskLevel = (risk) => {
+  const raw = String(risk?.level || "").toLowerCase().trim();
+  if (/high|critical|severe|^h$/.test(raw)) return "high";
+  if (/medium|moderate|^med$|^m$/.test(raw)) return "medium";
+  if (/low|minor|^l$/.test(raw)) return "low";
+  const rpn = Number(risk?.rpn) || 0;
+  if (rpn >= 100) return "high";
+  if (rpn >= 40) return "medium";
+  return "low";
+};
+
+// Similarity between an FMEA row's initiative label and a real initiative name.
+// Exact key = 1; one containing the other scores high; otherwise word-overlap
+// (Jaccard). Lets near-matches attach (e.g. "Talent ecosystem" ≈
+// "Self-sustaining Talent ecosystem").
+const STOP_WORDS = new Set(["and", "the", "of", "for", "to", "a", "an", "in", "on"]);
+const wordSet = (s) =>
+  new Set(
+    (String(s || "").toLowerCase().match(/[a-z0-9]+/g) || []).filter(
+      (w) => w.length > 1 && !STOP_WORDS.has(w)
+    )
+  );
+const matchScore = (candName, iniName) => {
+  const ck = compactKey(candName);
+  const ik = compactKey(iniName);
+  if (!ck || !ik) return 0;
+  if (ck === ik) return 1;
+  if (ck.includes(ik) || ik.includes(ck)) {
+    return 0.8 + 0.2 * (Math.min(ck.length, ik.length) / Math.max(ck.length, ik.length));
+  }
+  const a = wordSet(candName);
+  const b = wordSet(iniName);
+  if (!a.size || !b.size) return 0;
+  let inter = 0;
+  for (const w of a) if (b.has(w)) inter += 1;
+  return inter / (a.size + b.size - inter); // Jaccard 0..1
+};
+
+// Attach FMEA rows onto the grouped tree, matching each row to the closest
+// initiative by name. Rows that don't clear the similarity threshold are
+// dropped rather than mis-attributed.
+const MATCH_THRESHOLD = 0.5;
+export function attachFmeaToTree(tree, fmeaRows = []) {
+  if (!fmeaRows || !fmeaRows.length) return tree;
+
+  const index = [];
+  for (const phase of Object.keys(tree)) {
+    for (const dim of Object.keys(tree[phase])) {
+      for (const header of Object.keys(tree[phase][dim])) {
+        const node = tree[phase][dim][header];
+        node.risksByInitiative ??= {};
+        for (const name of Object.keys(node.initiatives || {})) {
+          index.push({ node, name });
+        }
+      }
+    }
+  }
+  if (!index.length) return tree;
+
+  for (const r of fmeaRows) {
+    const label = r.initiative || r.keyProcessInput || r.header || "";
+    if (!label) continue;
+    let best = null;
+    let bestScore = 0;
+    for (const e of index) {
+      const score = matchScore(label, e.name);
+      if (score > bestScore) {
+        bestScore = score;
+        best = e;
+      }
+    }
+    if (!best || bestScore < MATCH_THRESHOLD) continue;
+    best.node.risksByInitiative[best.name] ??= [];
+    best.node.risksByInitiative[best.name].push(r);
+  }
+  return tree;
+}
+
 // Normalize status strings (handles "In Progress", "in_progress", etc.)
 const normStatus = (s) => {
   const v = String(s || "").toLowerCase().trim().replace(/[\s_-]+/g, "");
@@ -243,10 +455,12 @@ export function flattenForRender(tree) {
     for (const dim of Object.keys(tree[phase])) {
       for (const header of Object.keys(tree[phase][dim])) {
         const initiatives = tree[phase][dim][header].initiatives || {};
+        const risksByInitiative = tree[phase][dim][header].risksByInitiative || {};
         const initiativeEntries = Object.entries(initiatives).map(([initiativeName, tasks]) => ({
           name: initiativeName,
           tasks,
           stats: computeStats(tasks),
+          risks: risksByInitiative[initiativeName] || [],
         }));
         const tasks = initiativeEntries.flatMap((entry) => entry.tasks);
         const key = normKey(phase, dim, header);

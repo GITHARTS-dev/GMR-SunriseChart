@@ -11,15 +11,28 @@ import {
   ChevronUp,
   Circle,
   Clock,
-  Flag,
   Hourglass,
   ListChecks,
   MoreVertical,
+  ShieldAlert,
   Target,
   Users,
 } from "lucide-react";
 
-import { computeStats } from "../utils.js";
+import {
+  computeStats,
+  parseDate,
+  taskStartDate,
+  taskEndDate,
+  isOverdue,
+  RAG_COLORS,
+  RAG_LABEL,
+  initiativeRag,
+  headerRag,
+  getProgressColor,
+} from "../utils.js";
+import RagIcon from "./RagIcon.jsx";
+import RiskRegister from "./RiskRegister.jsx";
 
 const statusLabel = (status) => {
   if (status === "done") return "Completed";
@@ -34,40 +47,6 @@ const STATUS_STYLES = {
   todo: { bg: "bg-slate-100", text: "text-slate-600", bar: "#cbd5e1", Icon: Circle },
 };
 
-// Per-initiative colour themes (decorative — cycled by index). The icon is the
-// same for every initiative; only the colour varies.
-const INITIATIVE_ICON = Flag;
-const INITIATIVE_THEMES = [
-  { Icon: INITIATIVE_ICON, bg: "bg-orange-100", fg: "text-orange-500", tint: "bg-orange-50", color: "#f97316" },
-  { Icon: INITIATIVE_ICON, bg: "bg-amber-100", fg: "text-amber-500", tint: "bg-amber-50", color: "#f59e0b" },
-  { Icon: INITIATIVE_ICON, bg: "bg-violet-100", fg: "text-violet-500", tint: "bg-violet-50", color: "#8b5cf6" },
-  { Icon: INITIATIVE_ICON, bg: "bg-teal-100", fg: "text-teal-500", tint: "bg-teal-50", color: "#14b8a6" },
-  { Icon: INITIATIVE_ICON, bg: "bg-pink-100", fg: "text-pink-500", tint: "bg-pink-50", color: "#ec4899" },
-  { Icon: INITIATIVE_ICON, bg: "bg-blue-100", fg: "text-blue-500", tint: "bg-blue-50", color: "#3b82f6" },
-];
-const themeFor = (index) => INITIATIVE_THEMES[index % INITIATIVE_THEMES.length];
-
-const pickDetail = (details = {}, ...keys) => {
-  for (const k of keys) {
-    const v = details?.[k];
-    if (v != null && String(v).trim()) return String(v).trim();
-  }
-  return "";
-};
-
-const taskStartDate = (task) =>
-  pickDetail(task.details, "Start Date", "Start", "StartDate", "start date", "start");
-const taskEndDate = (task) =>
-  pickDetail(
-    task.details,
-    "End Date",
-    "End",
-    "Due Date",
-    "EndDate",
-    "end date",
-    "end",
-    "due date"
-  );
 const taskAccountable = (task) =>
   task.assignee ||
   task.details?.Accountable ||
@@ -75,37 +54,6 @@ const taskAccountable = (task) =>
   task.details?.Owner ||
   task.details?.owner ||
   "";
-
-// Parse the assorted Excel date formats (M/D/YYYY, M/D/YY, D-M-YYYY, YYYY-MM-DD).
-const parseDate = (value) => {
-  const s = String(value || "").trim();
-  if (!s) return null;
-  const parts = s.split(/[/\-.]/).map((p) => p.trim());
-  if (parts.length === 3 && parts.every((p) => /^\d+$/.test(p))) {
-    let [a, b, c] = parts.map(Number);
-    let year;
-    let month;
-    let day;
-    if (String(parts[0]).length === 4) {
-      year = a;
-      month = b;
-      day = c;
-    } else {
-      year = c < 100 ? 2000 + c : c;
-      if (a > 12) {
-        day = a;
-        month = b;
-      } else {
-        month = a;
-        day = b;
-      }
-    }
-    const d = new Date(year, month - 1, day);
-    return Number.isNaN(d.getTime()) ? null : d;
-  }
-  const d = new Date(s);
-  return Number.isNaN(d.getTime()) ? null : d;
-};
 
 const formatDate = (value) => {
   const d = parseDate(value);
@@ -116,18 +64,6 @@ const formatDate = (value) => {
     year: "numeric",
   });
 };
-
-const isOverdue = (status, endValue) => {
-  if (status === "done") return false;
-  const end = parseDate(endValue);
-  if (!end) return false;
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  return end < today;
-};
-
-const actionPct = (status) =>
-  status === "done" ? 100 : status === "inprogress" ? 50 : 0;
 
 // Display order for actions: Completed → In progress → Delayed → To do.
 // "Delayed" is its own bucket (overdue and not yet done).
@@ -177,7 +113,17 @@ function StatCard({ Icon, value, label, bg, fg }) {
       </span>
       <div className="min-w-0">
         <div className="text-xl font-extrabold leading-none text-slate-900">{value}</div>
-        <div className="mt-1 text-xs font-medium text-slate-500">{label}</div>
+        <div className="mt-1 text-xs font-medium leading-tight text-slate-500">
+          {(() => {
+            const [first, ...rest] = label.split(" ");
+            return (
+              <>
+                <div>{first}</div>
+                {rest.length ? <div>{rest.join(" ")}</div> : null}
+              </>
+            );
+          })()}
+        </div>
       </div>
     </div>
   );
@@ -189,7 +135,6 @@ function ActionRow({ task }) {
 
   const status = STATUS_STYLES[task.status] || STATUS_STYLES.todo;
   const StatusIcon = status.Icon;
-  const pct = actionPct(task.status);
   const start = taskStartDate(task);
   const end = taskEndDate(task);
   const overdue = isOverdue(task.status, end);
@@ -262,18 +207,6 @@ function ActionRow({ task }) {
               {outcome}
             </div>
           ) : null}
-
-          <div className="mt-3 flex items-center gap-3">
-            <div className="h-1.5 max-w-md flex-1 overflow-hidden rounded-full bg-slate-100">
-              <div
-                className="h-full rounded-full"
-                style={{ width: `${pct}%`, background: status.bar }}
-              />
-            </div>
-            <span className="shrink-0 text-xs font-semibold" style={{ color: status.bar }}>
-              {pct}% Complete
-            </span>
-          </div>
         </div>
 
         <button
@@ -289,11 +222,15 @@ function ActionRow({ task }) {
 }
 
 // Expanded or collapsed initiative block.
-function InitiativeBlock({ initiative, theme, expanded, onToggle }) {
+function InitiativeBlock({ initiative, expanded, onToggle }) {
+  const [tab, setTab] = useState("actions");
   const stats = initiative.stats || computeStats(initiative.tasks);
   const pct = stats.pct;
+  const progressColor = getProgressColor(pct);
   const outcome = initiative.tasks?.[0]?.outcome || "";
-  const Icon = theme.Icon;
+  const rag = initiativeRag(initiative);
+  const risks = initiative.risks || [];
+  const hasRisks = risks.length > 0;
 
   if (!expanded) {
     return (
@@ -302,9 +239,7 @@ function InitiativeBlock({ initiative, theme, expanded, onToggle }) {
         onClick={onToggle}
         className="flex w-full items-center gap-4 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-left transition-colors hover:bg-slate-50/70"
       >
-        <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${theme.bg}`}>
-          <Icon className={`h-5 w-5 ${theme.fg}`} />
-        </span>
+        <RagIcon level={rag} size={32} title={RAG_LABEL[rag]} />
         <div className="min-w-0 flex-1">
           <div className="font-bold text-slate-900">{initiative.name}</div>
           {outcome ? (
@@ -313,7 +248,7 @@ function InitiativeBlock({ initiative, theme, expanded, onToggle }) {
         </div>
         <div className="hidden w-44 shrink-0 sm:block">
           <div className="flex items-center justify-end gap-2">
-            <span className="text-sm font-bold" style={{ color: theme.color }}>
+            <span className="text-sm font-bold" style={{ color: progressColor }}>
               {pct}%
             </span>
           </div>
@@ -323,7 +258,7 @@ function InitiativeBlock({ initiative, theme, expanded, onToggle }) {
           <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
             <div
               className="h-full rounded-full"
-              style={{ width: `${pct}%`, background: theme.color }}
+              style={{ width: `${pct}%`, background: progressColor }}
             />
           </div>
         </div>
@@ -337,18 +272,16 @@ function InitiativeBlock({ initiative, theme, expanded, onToggle }) {
   return (
     <div
       className="rounded-2xl border border-slate-200 bg-white"
-      style={{ borderLeft: `4px solid ${theme.color}` }}
+      style={{ borderLeft: `4px solid ${RAG_COLORS[rag]}` }}
     >
       <div className="flex items-start gap-4 p-4">
-        <span className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full ${theme.bg}`}>
-          <Icon className={`h-6 w-6 ${theme.fg}`} />
-        </span>
+        <RagIcon level={rag} size={32} title={RAG_LABEL[rag]} />
         <div className="min-w-0 flex-1">
           <div className="text-lg font-bold text-slate-900">{initiative.name}</div>
           {outcome ? <div className="text-sm text-slate-500">{outcome}</div> : null}
         </div>
         <div className="hidden w-56 shrink-0 sm:block">
-          <div className="text-right text-2xl font-extrabold" style={{ color: theme.color }}>
+          <div className="text-right text-2xl font-extrabold" style={{ color: progressColor }}>
             {pct}%
           </div>
           <div className="text-right text-xs text-slate-400">
@@ -357,7 +290,7 @@ function InitiativeBlock({ initiative, theme, expanded, onToggle }) {
           <div className="mt-1.5 h-2 w-full overflow-hidden rounded-full bg-slate-100">
             <div
               className="h-full rounded-full"
-              style={{ width: `${pct}%`, background: theme.color }}
+              style={{ width: `${pct}%`, background: progressColor }}
             />
           </div>
         </div>
@@ -371,12 +304,63 @@ function InitiativeBlock({ initiative, theme, expanded, onToggle }) {
         </button>
       </div>
 
-      <div className="space-y-3 px-4 pb-4">
-        {orderedTasks.map((task, idx) => (
-          <ActionRow key={`${initiative.name}-${idx}-${task.task}`} task={task} />
-        ))}
-      </div>
+      {hasRisks ? (
+        <div className="flex gap-1 border-b border-slate-200 px-4">
+          <TabButton
+            active={tab === "actions"}
+            onClick={() => setTab("actions")}
+            Icon={ListChecks}
+            label="Actions"
+            count={stats.total}
+          />
+          <TabButton
+            active={tab === "risks"}
+            onClick={() => setTab("risks")}
+            Icon={ShieldAlert}
+            label="FMEA"
+          />
+        </div>
+      ) : null}
+
+      {hasRisks && tab === "risks" ? (
+        <div className="bg-slate-50/60 px-4 py-4">
+          <RiskRegister initiative={initiative} />
+        </div>
+      ) : (
+        <div className="space-y-3 px-4 pb-4 pt-4">
+          {orderedTasks.map((task, idx) => (
+            <ActionRow key={`${initiative.name}-${idx}-${task.task}`} task={task} />
+          ))}
+        </div>
+      )}
     </div>
+  );
+}
+
+// Segmented tab used inside an expanded initiative (Actions | Risks).
+function TabButton({ active, onClick, Icon, label, count }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`-mb-px inline-flex items-center gap-2 border-b-2 px-3.5 py-2.5 text-sm font-semibold transition-colors ${
+        active
+          ? "border-[#00437A] text-[#00437A]"
+          : "border-transparent text-slate-500 hover:text-slate-700"
+      }`}
+    >
+      <Icon className="h-4 w-4" />
+      {label}
+      {count != null ? (
+        <span
+          className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold ${
+            active ? "bg-[#00437A] text-white" : "bg-slate-200 text-slate-600"
+          }`}
+        >
+          {count}
+        </span>
+      ) : null}
+    </button>
   );
 }
 
@@ -391,17 +375,18 @@ export default function HeaderDetailView({ item, onBack, userName, userEmail }) 
   const allTasks = item.tasks || [];
   const stats = computeStats(allTasks);
   const delayed = allTasks.filter((t) => isOverdue(t.status, taskEndDate(t))).length;
+  const headerLevel = headerRag(initiatives);
 
   const toggleInitiative = (name) =>
     setOpenInitiative((prev) => (prev === name ? null : name));
 
   const statCards = [
     { Icon: Briefcase, value: initiatives.length, label: "Initiatives", bg: "bg-violet-100", fg: "text-violet-500" },
-    { Icon: ListChecks, value: stats.total, label: "Actions", bg: "bg-blue-100", fg: "text-blue-500" },
-    { Icon: CheckCircle2, value: stats.done, label: "Completed", bg: "bg-emerald-100", fg: "text-emerald-500" },
-    { Icon: Clock, value: stats.inprog, label: "In Progress", bg: "bg-orange-100", fg: "text-orange-500" },
-    { Icon: Hourglass, value: stats.todo, label: "Not Started", bg: "bg-amber-100", fg: "text-amber-500" },
-    { Icon: AlertCircle, value: delayed, label: "Delayed", bg: "bg-rose-100", fg: "text-rose-500" },
+    { Icon: ListChecks, value: stats.total, label: "Total Actions", bg: "bg-blue-100", fg: "text-blue-500" },
+    { Icon: CheckCircle2, value: stats.done, label: "Action Completed", bg: "bg-emerald-100", fg: "text-emerald-500" },
+    { Icon: Clock, value: stats.inprog, label: "Action In Progress", bg: "bg-orange-100", fg: "text-orange-500" },
+    { Icon: Hourglass, value: stats.todo, label: "Action Not Started", bg: "bg-amber-100", fg: "text-amber-500" },
+    { Icon: AlertCircle, value: delayed, label: "Action Delayed", bg: "bg-rose-100", fg: "text-rose-500" },
   ];
 
   return (
@@ -423,9 +408,11 @@ export default function HeaderDetailView({ item, onBack, userName, userEmail }) 
           </div>
 
           <div className="mt-3 flex-1 space-y-1.5 overflow-y-auto">
-            {initiatives.map((ini, index) => {
-              const theme = themeFor(index);
+            {initiatives.map((ini) => {
               const pct = ini.stats?.pct ?? 0;
+              const progressColor = getProgressColor(pct);
+              const rag = initiativeRag(ini);
+              const ragColor = RAG_COLORS[rag];
               const active = openInitiative === ini.name;
               return (
                 <button
@@ -433,28 +420,29 @@ export default function HeaderDetailView({ item, onBack, userName, userEmail }) 
                   type="button"
                   onClick={() => setOpenInitiative(ini.name)}
                   className={`w-full rounded-xl px-3 py-2.5 text-left transition-colors ${
-                    active ? theme.tint : "hover:bg-slate-100"
+                    active ? "" : "hover:bg-slate-100"
                   }`}
-                  style={active ? { boxShadow: `inset 3px 0 0 ${theme.color}` } : undefined}
+                  style={
+                    active
+                      ? { background: `${ragColor}1a`, boxShadow: `inset 3px 0 0 ${ragColor}` }
+                      : undefined
+                  }
                 >
                   <div className="flex items-center justify-between gap-2">
                     <span className="flex min-w-0 items-center gap-2">
-                      <span
-                        className="h-2 w-2 shrink-0 rounded-full"
-                        style={{ background: theme.color }}
-                      />
+                      <RagIcon level={rag} size={20} title={RAG_LABEL[rag]} />
                       <span className="truncate text-sm font-medium text-slate-700">
                         {ini.name}
                       </span>
                     </span>
-                    <span className="shrink-0 text-xs font-bold" style={{ color: theme.color }}>
+                    <span className="shrink-0 text-xs font-bold" style={{ color: progressColor }}>
                       {pct}%
                     </span>
                   </div>
                   <div className="mt-1.5 h-1 w-full overflow-hidden rounded-full bg-slate-200/70">
                     <div
                       className="h-full rounded-full"
-                      style={{ width: `${pct}%`, background: theme.color }}
+                      style={{ width: `${pct}%`, background: progressColor }}
                     />
                   </div>
                 </button>
@@ -479,11 +467,16 @@ export default function HeaderDetailView({ item, onBack, userName, userEmail }) 
                 </button>
               </div>
               <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+                <RagIcon
+                  level={headerLevel}
+                  size={34}
+                  title={`${RAG_LABEL[headerLevel]} — initiative health`}
+                />
                 <h1 className="text-2xl font-extrabold tracking-tight text-slate-900 sm:text-3xl">
                   {item.header}
                 </h1>
                 {/* Overall progress, right after the header */}
-                <div className="flex items-center gap-2">
+                {/* <div className="flex items-center gap-2">
                   <Ring pct={stats.pct} size={44} />
                   <div className="leading-none">
                     <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
@@ -493,7 +486,7 @@ export default function HeaderDetailView({ item, onBack, userName, userEmail }) 
                       {stats.pct}%
                     </div>
                   </div>
-                </div>
+                </div> */}
               </div>
               <p className="mt-1 text-sm text-slate-500">
                 Tracking {stats.total} actions across {initiatives.length}{" "}
@@ -525,11 +518,10 @@ export default function HeaderDetailView({ item, onBack, userName, userEmail }) 
             </div>
           ) : (
             <div className="mt-5 space-y-3">
-              {initiatives.map((ini, index) => (
+              {initiatives.map((ini) => (
                 <InitiativeBlock
                   key={ini.name}
                   initiative={ini}
-                  theme={themeFor(index)}
                   expanded={openInitiative === ini.name}
                   onToggle={() => toggleInitiative(ini.name)}
                 />

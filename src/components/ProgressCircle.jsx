@@ -2,11 +2,11 @@ import React from "react";
 import { motion } from "framer-motion";
 import { getProgressColor } from "../utils.js";
 
-export default function ProgressCircle({ pct, size = 38 }) {
+export default function ProgressCircle({ pct, size = 38, color }) {
   const stroke = 4;
   const r = (size - stroke) / 2;
   const c = 2 * Math.PI * r;
-  const color = getProgressColor(pct);
+  const ringColor = color || getProgressColor(pct);
 
   return (
     <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
@@ -23,7 +23,7 @@ export default function ProgressCircle({ pct, size = 38 }) {
         cy={size / 2}
         r={r}
         fill="none"
-        stroke={color}
+        stroke={ringColor}
         strokeWidth={stroke}
         strokeLinecap="round"
         strokeDasharray={c}

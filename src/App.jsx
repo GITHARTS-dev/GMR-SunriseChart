@@ -3,9 +3,9 @@ import * as XLSX from "xlsx";
 import { useMsal } from "@azure/msal-react";
 
 import DashboardCanvas from "./components/DashboardCanvas.jsx";
-import { groupData } from "./utils.js";
+import { groupData, attachFmeaToTree } from "./utils.js";
 import { getFileLastModified, downloadFileBuffer } from "./graphExcel.js";
-import { isAdminEmail, EXCEL_FILE_URL, loginRequest } from "./authConfig.js";
+import { isAdminEmail, EXCEL_FILE_URL, FMEA_FILE_URL, loginRequest } from "./authConfig.js";
 
 const HEADER_ALIASES = {
   phase: ["phase", "stage", "maturityphase", "maturitystage"],
@@ -285,14 +285,18 @@ const sheetHasStatusColumn = (sheet) => {
 
 const rowsFromWorkbook = (workbook) => {
   const allRows = [];
+  // FMEA sheets also carry a Status column but are risk registers, not task
+  // lists — keep them out of the Actions parser (they are routed to
+  // fmeaFromWorkbook instead).
+  const nonFmea = workbook.SheetNames.filter(
+    (name) => !isFmeaSheet(workbook.Sheets[name])
+  );
   // Prefer sheets that actually carry a Status column; reference sheets
   // without statuses would otherwise emit duplicate tasks marked "todo".
-  const sheetsWithStatus = workbook.SheetNames.filter((name) =>
+  const sheetsWithStatus = nonFmea.filter((name) =>
     sheetHasStatusColumn(workbook.Sheets[name])
   );
-  const targets = sheetsWithStatus.length
-    ? sheetsWithStatus
-    : workbook.SheetNames;
+  const targets = sheetsWithStatus.length ? sheetsWithStatus : nonFmea;
 
   for (const sheetName of targets) {
     const rows = rowsFromSheet(workbook.Sheets[sheetName], sheetName);
@@ -303,9 +307,143 @@ const rowsFromWorkbook = (workbook) => {
   return allRows;
 };
 
-const rowsFromArrayBuffer = (buffer) => {
+// ─── FMEA (risk) sheet parsing ──────────────────────────────────────────────
+// The FMEA file is a risk register with one row per initiative, detected by its
+// "Failure Mode" column. We keep only the nine fields the dashboard shows and
+// the initiative identifier used to match it (see attachFmeaToTree). Any extra
+// columns (severity/occurrence/detection, revised scores, status, dates…) are
+// ignored. Where a column such as RPN appears more than once, the first
+// occurrence wins.
+
+const FMEA_STATIC = {
+  failuremode: "failureMode",
+  effect: "effect",
+  effects: "effect",
+  cause: "cause",
+  causes: "cause",
+  currentcontrols: "controls",
+  controls: "controls",
+  rpn: "rpn",
+  risk: "level",
+  risklevel: "level",
+  recommendedaction: "recommended",
+  recommendedactions: "recommended",
+  recommended: "recommended",
+  accountable: "accountable",
+  responsible: "responsible",
+  keyprocessinput: "keyProcessInput",
+  processinput: "keyProcessInput",
+  initiative: "initiative",
+  subinitiative: "initiative",
+  header: "header",
+  topic: "header",
+};
+
+// Map a normalized header token to a field, tolerant of trailing "(s)", ":" etc.
+// RPN is checked before "risk" so "RPN" never resolves to the Risk column.
+const fmeaFieldFor = (token) => {
+  if (FMEA_STATIC[token]) return FMEA_STATIC[token];
+  if (token.includes("rpn")) return "rpn";
+  if (token.startsWith("failuremode")) return "failureMode";
+  if (token.startsWith("effect")) return "effect";
+  if (token.startsWith("cause")) return "cause";
+  if (token.startsWith("currentcontrol") || token === "control") return "controls";
+  if (token.startsWith("recommend")) return "recommended";
+  if (token.startsWith("accountable")) return "accountable";
+  if (token.startsWith("responsible")) return "responsible";
+  if (token.startsWith("keyprocessinput")) return "keyProcessInput";
+  if (token.startsWith("risk")) return "level";
+  return null;
+};
+
+const readSheetGrid = (sheet) => {
+  if (!sheet?.["!ref"]) return [];
+  const range = XLSX.utils.decode_range(sheet["!ref"]);
+  const endRow = Math.min(range.e.r, range.s.r + MAX_SCAN_ROWS - 1);
+  const endCol = Math.min(range.e.c, range.s.c + MAX_SCAN_COLS - 1);
+  const grid = [];
+  for (let r = range.s.r; r <= endRow; r += 1) {
+    const row = [];
+    let has = false;
+    for (let c = range.s.c; c <= endCol; c += 1) {
+      const addr = XLSX.utils.encode_cell({ r, c });
+      const v = clean(sheet[addr]?.w ?? sheet[addr]?.v);
+      row.push(v);
+      if (v) has = true;
+    }
+    if (has) grid.push(row);
+  }
+  return grid;
+};
+
+// A header row is FMEA if it names a Failure Mode, or has an RPN plus a
+// Cause/Recommended column (covers spelling variants of the title column).
+const isFmeaHeaderRow = (row) => {
+  const keys = row.map(headerKey);
+  const failure = keys.some((k) => k.startsWith("failuremode"));
+  const rpn = keys.some((k) => k.includes("rpn"));
+  const causeOrRec = keys.some((k) => k.startsWith("cause") || k.startsWith("recommend"));
+  return failure || (rpn && causeOrRec);
+};
+
+const findFmeaHeaderRow = (grid) => {
+  const limit = Math.min(grid.length, 25);
+  for (let i = 0; i < limit; i += 1) {
+    if (isFmeaHeaderRow(grid[i])) return i;
+  }
+  return -1;
+};
+
+const isFmeaSheet = (sheet) => findFmeaHeaderRow(readSheetGrid(sheet)) >= 0;
+
+const fmeaRowsFromSheet = (sheet) => {
+  const grid = readSheetGrid(sheet);
+  const headerRow = findFmeaHeaderRow(grid);
+  if (headerRow < 0) return [];
+
+  const colFields = grid[headerRow].map((cell) => fmeaFieldFor(headerKey(cell)));
+
+  const risks = [];
+  for (let i = headerRow + 1; i < grid.length; i += 1) {
+    const cells = grid[i];
+    const risk = {};
+    colFields.forEach((field, idx) => {
+      if (!field) return;
+      const value = clean(cells[idx]);
+      if (value && !risk[field]) risk[field] = value; // first occurrence wins
+    });
+    // A genuine row must name a failure mode; skip banners / blank rows.
+    if (!risk.failureMode) continue;
+    if (risk.initiative) risk.initiative = stripGlyphs(risk.initiative);
+    if (risk.header) risk.header = stripGlyphs(risk.header);
+    if (risk.keyProcessInput) risk.keyProcessInput = stripGlyphs(risk.keyProcessInput);
+    risks.push(risk);
+  }
+  return risks;
+};
+
+const fmeaFromWorkbook = (workbook) => {
+  const all = [];
+  for (const name of workbook.SheetNames) {
+    const sheet = workbook.Sheets[name];
+    if (!isFmeaSheet(sheet)) continue;
+    all.push(...fmeaRowsFromSheet(sheet));
+  }
+  return all;
+};
+
+const dataFromArrayBuffer = (buffer) => {
   const workbook = XLSX.read(buffer, { type: "array" });
-  return rowsFromWorkbook(workbook);
+  return {
+    rows: rowsFromWorkbook(workbook),
+    fmeaRows: fmeaFromWorkbook(workbook),
+  };
+};
+
+// Parse just the FMEA rows out of a standalone workbook (the separate FMEA file).
+const fmeaFromArrayBuffer = (buffer) => {
+  const workbook = XLSX.read(buffer, { type: "array" });
+  return fmeaFromWorkbook(workbook);
 };
 
 // How often to check SharePoint for changes (smart polling).
@@ -344,7 +482,7 @@ export default function App() {
       }
 
       const buffer = await downloadFileBuffer(instance);
-      const rows = rowsFromArrayBuffer(buffer);
+      const { rows, fmeaRows: workbookFmea } = dataFromArrayBuffer(buffer);
       if (!rows.length) {
         throw new Error("No valid rows were found in the Excel file.");
       }
@@ -353,6 +491,20 @@ export default function App() {
       if (Object.keys(tree).length === 0) {
         throw new Error("No valid rows found in the Excel file.");
       }
+
+      // FMEA lives in a separate SharePoint workbook. Fetch + parse it, but never
+      // let a problem there break the main dashboard — just skip the risks.
+      let fmeaRows = workbookFmea;
+      if (FMEA_FILE_URL && FMEA_FILE_URL !== EXCEL_FILE_URL) {
+        try {
+          const fmeaBuffer = await downloadFileBuffer(instance, FMEA_FILE_URL);
+          fmeaRows = [...workbookFmea, ...fmeaFromArrayBuffer(fmeaBuffer)];
+        } catch (e) {
+          // eslint-disable-next-line no-console
+          console.warn("FMEA file could not be loaded:", e?.message || e);
+        }
+      }
+      attachFmeaToTree(tree, fmeaRows);
 
       setData(tree);
       lastModifiedRef.current = lastModified;

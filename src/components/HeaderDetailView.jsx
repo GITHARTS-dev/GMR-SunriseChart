@@ -239,7 +239,7 @@ function InitiativeBlock({ initiative, expanded, onToggle }) {
         onClick={onToggle}
         className="flex w-full items-center gap-4 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-left transition-colors hover:bg-slate-50/70"
       >
-        <RagIcon level={rag} size={19} title={RAG_LABEL[rag]} />
+        <RagIcon level={rag} size={32} title={RAG_LABEL[rag]} />
         <div className="min-w-0 flex-1">
           <div className="font-bold text-slate-900">{initiative.name}</div>
           {outcome ? (
@@ -275,7 +275,7 @@ function InitiativeBlock({ initiative, expanded, onToggle }) {
       style={{ borderLeft: `4px solid ${RAG_COLORS[rag]}` }}
     >
       <div className="flex items-start gap-4 p-4">
-        <RagIcon level={rag} size={19} title={RAG_LABEL[rag]} />
+        <RagIcon level={rag} size={32} title={RAG_LABEL[rag]} />
         <div className="min-w-0 flex-1">
           <div className="text-lg font-bold text-slate-900">{initiative.name}</div>
           {outcome ? <div className="text-sm text-slate-500">{outcome}</div> : null}
@@ -310,7 +310,7 @@ function InitiativeBlock({ initiative, expanded, onToggle }) {
             active={tab === "actions"}
             onClick={() => setTab("actions")}
             Icon={ListChecks}
-            label="Actions : Execution Steps"
+            label="Actions"
             count={stats.total}
           />
           <TabButton
@@ -330,7 +330,7 @@ function InitiativeBlock({ initiative, expanded, onToggle }) {
         <div className="space-y-3 px-4 pb-4 pt-4">
           {!hasRisks ? (
             <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
-              Actions <span className="text-slate-300">:</span> Execution Steps
+              Actions
             </div>
           ) : null}
           {orderedTasks.map((task, idx) => (
@@ -419,7 +419,7 @@ export default function HeaderDetailView({ item, onBack, userName, userEmail }) 
           </button>
 
           <div className="mt-6 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
-            Initiatives <span className="text-slate-300">:</span> Key Workstream
+            Initiatives
           </div>
 
           <div className="mt-3 flex-1 space-y-1.5 overflow-y-auto">
@@ -445,7 +445,7 @@ export default function HeaderDetailView({ item, onBack, userName, userEmail }) 
                 >
                   <div className="flex items-center justify-between gap-2">
                     <span className="flex min-w-0 items-center gap-2">
-                      <RagIcon level={rag} size={19} title={RAG_LABEL[rag]} />
+                      <RagIcon level={rag} size={20} title={RAG_LABEL[rag]} />
                       <span className="truncate text-sm font-medium text-slate-700">
                         {ini.name}
                       </span>
@@ -484,12 +484,12 @@ export default function HeaderDetailView({ item, onBack, userName, userEmail }) 
               <div className="flex items-center gap-x-4">
                 <RagIcon
                   level={headerLevel}
-                  size={19}
+                  size={34}
                   title={`${RAG_LABEL[headerLevel]} — initiative health`}
                 />
                 <div className="min-w-0 pl-2">
                   <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
-                    Topic <span className="text-slate-300">:</span> Strategic Goal
+                    Topic
                   </div>
                   <h1 className="text-2xl font-extrabold tracking-tight text-slate-900 sm:text-3xl">
                     {item.header}

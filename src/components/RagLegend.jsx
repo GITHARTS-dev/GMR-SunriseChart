@@ -5,10 +5,10 @@ import { RAG_LABEL } from "../utils.js";
 // Legend for the RAGP status icons on the dashboard cards. Uses the same
 // RagIcon (shape + colour) that each card shows, so the mapping is unambiguous.
 const LEGEND = [
-  { level: "green" },
-  { level: "amber" },
-  { level: "red" },
-  { level: "purple" },
+  { level: "green"},
+  { level: "amber"},
+  { level: "red"},
+  { level: "purple"},
 ];
 
 export default function RagLegend() {
@@ -18,9 +18,10 @@ export default function RagLegend() {
         Status legend
       </span>
       {LEGEND.map((it) => (
-        <span key={it.level} className="inline-flex items-center gap-2">
-          <RagIcon level={it.level} size={17} title={RAG_LABEL[it.level]} />
+        <span key={it.level} className="inline-flex items-center gap-2" title={it.desc}>
+          <RagIcon level={it.level} size={22} title={RAG_LABEL[it.level]} />
           <span className="text-xs font-semibold text-slate-700">{RAG_LABEL[it.level]}</span>
+          <span className="hidden text-[11px] text-slate-400 lg:inline">· {it.desc}</span>
         </span>
       ))}
     </div>

@@ -43,13 +43,13 @@ export default function AuthGate({ children }) {
             <div className="h-1.5 w-full" style={{ background: PHASE_ACCENT }} />
 
             <div className="p-8 text-center">
-              <img
-                src="/harts-logo.svg"
+              <img 
+                src="/gmr-logo.png"
                 alt="HARTS"
-                className="mx-auto h-14 w-auto object-contain"
+                className="mx-auto h-16 w-auto object-contain"
               />
 
-              <div className="mt-6 text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">
+              <div className="mt-0 text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">
                 Transformation Maturity
               </div>
               <h1 className="mt-1 text-2xl font-extrabold tracking-tight text-slate-900">

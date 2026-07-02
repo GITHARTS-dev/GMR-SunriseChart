@@ -13,7 +13,7 @@ import {
 const PHASE_MONTHS = {
   Establish: "9 Months",
   Enhance: "5 Months",
-  Optimize: "4 months",
+  Optimize: "4 Months",
 };
 
 export function PhaseHeaders() {

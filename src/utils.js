@@ -108,8 +108,8 @@ export const RAG_COLORS = {
 export const RAG_LABEL = {
   green: "On track",
   amber: "At risk",
-  red: "Delayed",
-  purple: "Not started",
+  red: "Off track",
+  purple: "Yet to start",
 };
 export const getRagColor = (level) => RAG_COLORS[level] || RAG_COLORS.green;
 

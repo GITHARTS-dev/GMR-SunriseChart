@@ -239,7 +239,7 @@ function InitiativeBlock({ initiative, expanded, onToggle }) {
         onClick={onToggle}
         className="flex w-full items-center gap-4 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-left transition-colors hover:bg-slate-50/70"
       >
-        <RagIcon level={rag} size={32} title={RAG_LABEL[rag]} />
+        <RagIcon level={rag} size={19} title={RAG_LABEL[rag]} />
         <div className="min-w-0 flex-1">
           <div className="font-bold text-slate-900">{initiative.name}</div>
           {outcome ? (
@@ -275,7 +275,7 @@ function InitiativeBlock({ initiative, expanded, onToggle }) {
       style={{ borderLeft: `4px solid ${RAG_COLORS[rag]}` }}
     >
       <div className="flex items-start gap-4 p-4">
-        <RagIcon level={rag} size={32} title={RAG_LABEL[rag]} />
+        <RagIcon level={rag} size={19} title={RAG_LABEL[rag]} />
         <div className="min-w-0 flex-1">
           <div className="text-lg font-bold text-slate-900">{initiative.name}</div>
           {outcome ? <div className="text-sm text-slate-500">{outcome}</div> : null}
@@ -310,7 +310,7 @@ function InitiativeBlock({ initiative, expanded, onToggle }) {
             active={tab === "actions"}
             onClick={() => setTab("actions")}
             Icon={ListChecks}
-            label="Actions"
+            label="Actions : Execution Steps"
             count={stats.total}
           />
           <TabButton
@@ -328,6 +328,11 @@ function InitiativeBlock({ initiative, expanded, onToggle }) {
         </div>
       ) : (
         <div className="space-y-3 px-4 pb-4 pt-4">
+          {!hasRisks ? (
+            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+              Actions <span className="text-slate-300">:</span> Execution Steps
+            </div>
+          ) : null}
           {orderedTasks.map((task, idx) => (
             <ActionRow key={`${initiative.name}-${idx}-${task.task}`} task={task} />
           ))}
@@ -389,8 +394,18 @@ export default function HeaderDetailView({ item, onBack, userName, userEmail }) 
     { Icon: AlertCircle, value: delayed, label: "Action Delayed", bg: "bg-rose-100", fg: "text-rose-500" },
   ];
 
+  // 👉 Overall page scale. 1 = 100% (browser default). 0.8 renders the whole
+  // page at 80% — like setting the browser zoom to 80% — so more fits on screen
+  // without the user zooming manually. `zoom` scales the layout and keeps the
+  // page filling the viewport (no horizontal scroll), so no width/height
+  // compensation is needed.
+  const PAGE_ZOOM = 0.8;
+
   return (
-    <div className="min-h-screen w-full bg-slate-100 p-2 sm:p-4">
+    <div
+      className="min-h-screen w-full bg-slate-100 p-2 sm:p-4"
+      style={{ zoom: PAGE_ZOOM }}
+    >
       <div className="mx-auto flex max-w-[1600px] overflow-hidden rounded-3xl bg-white shadow-sm ring-1 ring-slate-200/70">
         {/* Sidebar */}
         <aside className="hidden w-[260px] shrink-0 flex-col border-r border-slate-200 bg-slate-50/40 p-4 lg:flex">
@@ -404,7 +419,7 @@ export default function HeaderDetailView({ item, onBack, userName, userEmail }) 
           </button>
 
           <div className="mt-6 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
-            Initiatives
+            Initiatives <span className="text-slate-300">:</span> Key Workstream
           </div>
 
           <div className="mt-3 flex-1 space-y-1.5 overflow-y-auto">
@@ -430,7 +445,7 @@ export default function HeaderDetailView({ item, onBack, userName, userEmail }) 
                 >
                   <div className="flex items-center justify-between gap-2">
                     <span className="flex min-w-0 items-center gap-2">
-                      <RagIcon level={rag} size={20} title={RAG_LABEL[rag]} />
+                      <RagIcon level={rag} size={19} title={RAG_LABEL[rag]} />
                       <span className="truncate text-sm font-medium text-slate-700">
                         {ini.name}
                       </span>
@@ -469,12 +484,12 @@ export default function HeaderDetailView({ item, onBack, userName, userEmail }) 
               <div className="flex items-center gap-x-4">
                 <RagIcon
                   level={headerLevel}
-                  size={34}
+                  size={19}
                   title={`${RAG_LABEL[headerLevel]} — initiative health`}
                 />
                 <div className="min-w-0 pl-2">
                   <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
-                    Topic
+                    Topic <span className="text-slate-300">:</span> Strategic Goal
                   </div>
                   <h1 className="text-2xl font-extrabold tracking-tight text-slate-900 sm:text-3xl">
                     {item.header}

@@ -65,7 +65,7 @@ export default function CategoryCard({
 
       {/* RAG status */}
       <div className="mt-2 flex items-center">
-        <RagIcon level={rag} size={34} title={RAG_LABEL[rag]} />
+        <RagIcon level={rag} size={19} title={RAG_LABEL[rag]} />
       </div>
 
       {/* Hover glow */}

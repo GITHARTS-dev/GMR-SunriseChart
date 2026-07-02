@@ -9,49 +9,57 @@ import {
   BOTTOM_LABEL,
 } from "../constants.js";
 
+// Per-phase timeline duration shown above each phase header.
+const PHASE_MONTHS = {
+  Establish: "9 Months",
+  Enhance: "5 Months",
+  Optimize: "4 Months",
+};
+
 export function PhaseHeaders() {
-  const bandStart = PHASE_BANDS.Establish.x0;
-  const bandEnd = PHASE_BANDS.Optimize.x1;
   return (
     <>
-      {/* Timeline band — spans the full phase area above the phase headers */}
-      <div
-        className="absolute flex items-center justify-center font-bold tracking-wide text-[#1A2F5C] select-none"
-        style={{
-          left: bandStart,
-          top: -8,
-          width: bandEnd - bandStart,
-          height: 34,
-          background: "#EFF1F4",
-          fontSize: 17,
-          letterSpacing: "0.02em",
-          zIndex: 12,
-        }}
-      >
-        12 to 18 Months
-      </div>
-
-      {["Establish", "Enhance", "Optimize"].map((phase) => {
+      {["Establish", "Enhance", "Optimize"].map((phase, i) => {
         const band = PHASE_BANDS[phase];
         const width = band.x1 - band.x0;
         return (
-          <div
-            key={phase}
-            className="absolute flex items-center justify-center font-bold tracking-wide text-white select-none"
-            style={{
-              left: band.x0,
-              top: 28,
-              width,
-              height: HEADER_H,
-              background: PHASE_COLORS[phase].header,
-              fontSize: 22,
-              letterSpacing: "0.02em",
-              boxShadow: "inset 0 -2px 0 rgba(0,0,0,0.15)",
-              zIndex: 12,
-            }}
-          >
-            {phase}
-          </div>
+          <React.Fragment key={phase}>
+            {/* Per-phase duration — sits directly above the phase header */}
+            <div
+              className="absolute flex items-center justify-center font-bold tracking-wide text-[#1A2F5C] select-none"
+              style={{
+                left: band.x0,
+                top: -8,
+                width,
+                height: 34,
+                background: "#EFF1F4",
+                fontSize: 15,
+                letterSpacing: "0.02em",
+                borderLeft: i > 0 ? "2px solid #fff" : "none",
+                zIndex: 12,
+              }}
+            >
+              {PHASE_MONTHS[phase]}
+            </div>
+
+            {/* Phase header */}
+            <div
+              className="absolute flex items-center justify-center font-bold tracking-wide text-white select-none"
+              style={{
+                left: band.x0,
+                top: 28,
+                width,
+                height: HEADER_H,
+                background: PHASE_COLORS[phase].header,
+                fontSize: 22,
+                letterSpacing: "0.02em",
+                boxShadow: "inset 0 -2px 0 rgba(0,0,0,0.15)",
+                zIndex: 12,
+              }}
+            >
+              {phase}
+            </div>
+          </React.Fragment>
         );
       })}
     </>

@@ -20,11 +20,9 @@ export const TENANT_ID = import.meta.env.VITE_TENANT_ID;
 export const EXCEL_FILE_URL = import.meta.env.VITE_EXCEL_FILE_URL;
 
 // The SharePoint FMEA (risk register) workbook — a separate file whose rows are
-// matched to initiatives by name. Falls back to the shared link if the env var
-// is unset. Set VITE_FMEA_FILE_URL to override in dev/prod.
-export const FMEA_FILE_URL =
-  import.meta.env.VITE_FMEA_FILE_URL ||
-  "https://gobalharts.sharepoint.com/:x:/s/HARTSConsulting/IQDmlBTIKCOAQJaNGDiJl4TTAT4n9i0ButxdUHfJ_Ag-ZCE?e=YXx6Fk";
+// matched to initiatives by name. Set VITE_FMEA_FILE_URL in .env (dev) and the
+// Vercel project settings (prod). Unset → the FMEA data simply isn't loaded.
+export const FMEA_FILE_URL = import.meta.env.VITE_FMEA_FILE_URL;
 
 // Comma-separated list of emails allowed to toggle task completion (everyone
 // else is read-only). e.g. VITE_ADMIN_EMAILS="a@x.com,b@x.com"

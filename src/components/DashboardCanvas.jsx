@@ -7,6 +7,8 @@ import { PhaseHeaders, AxisLabels, GMRBadge } from "./Overlays.jsx";
 import CategoryCard from "./CategoryCard.jsx";
 import TooltipModal from "./TooltipModal.jsx";
 import HeaderDetailView from "./HeaderDetailView.jsx";
+import RiskProfileView from "./RiskProfileView.jsx";
+import RiskTargetIcon from "./RiskTargetIcon.jsx";
 import AccountMenu from "./AccountMenu.jsx";
 import RagLegend from "./RagLegend.jsx";
 
@@ -15,6 +17,7 @@ import { flattenForRender, computeStats, getProgressColor } from "../utils.js";
 
 export default function DashboardCanvas({
   tree,
+  riskProfile = [],
   fileName,
   sourceUrl,
   isAdmin = false,
@@ -35,6 +38,7 @@ export default function DashboardCanvas({
   const [anchor, setAnchor] = useState(null);
   const [localTree, setLocalTree] = useState(tree);
   const [selected, setSelected] = useState(null);
+  const [showRisk, setShowRisk] = useState(false);
   const [availableWidth, setAvailableWidth] = useState(CANVAS_W);
   const [availableHeight, setAvailableHeight] = useState(CANVAS_H);
   const canvasAreaRef = useRef(null);
@@ -153,6 +157,12 @@ export default function DashboardCanvas({
     setHover(null);
     setAnchor(null);
   };
+
+  if (showRisk) {
+    return (
+      <RiskProfileView groups={riskProfile} onBack={() => setShowRisk(false)} />
+    );
+  }
 
   if (currentSelected) {
     return (
@@ -327,6 +337,18 @@ export default function DashboardCanvas({
 
       {/* Status legend */}
       <RagLegend />
+
+      {/* Risk register (FMEA) — bottom-left launcher */}
+      <button
+        type="button"
+        onClick={() => setShowRisk(true)}
+        title="Open the risk register (FMEA)"
+        className="group fixed bottom-1 left-2 z-50 inline-flex items-center gap-2.5 rounded-2xl border border-white/10 px-5 py-3 text-sm font-bold uppercase tracking-[0.14em] text-white shadow-[0_10px_30px_rgba(2,6,23,0.35)] transition-all hover:-translate-y-0.5 hover:shadow-[0_16px_40px_rgba(2,6,23,0.45)]"
+        style={{ background: "linear-gradient(135deg, #111827 0%, #00437A 100%)" }}
+      >
+        <RiskTargetIcon className="h-5 w-5 text-rose-500 transition-transform group-hover:scale-110" />
+        Risk Register
+      </button>
     </div>
   );
 }

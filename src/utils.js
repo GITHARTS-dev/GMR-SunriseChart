@@ -83,6 +83,45 @@ export const taskEndDate = (task) =>
     "due date"
   );
 
+// Case/spacing-insensitive detail lookup: try each candidate header (reduced to
+// lowercase alphanumerics) in priority order and return the first matching,
+// non-empty cell. Tolerant of how the column is spelled/spaced in the sheet.
+export const pickDetailLoose = (details = {}, ...candidates) => {
+  const entries = Object.entries(details || {});
+  const norm = (s) => String(s).toLowerCase().replace(/[^a-z0-9]/g, "");
+  for (const cand of candidates) {
+    const want = norm(cand);
+    for (const [k, v] of entries) {
+      if (v == null || !String(v).trim()) continue;
+      if (norm(k) === want) return String(v).trim();
+    }
+  }
+  return "";
+};
+
+// A per-action progress / status-update note from the sheet, across the various
+// column names it may use (Progress, Action Taken / Update, % Complete, …).
+export const taskProgress = (task) =>
+  pickDetailLoose(
+    task.details,
+    "Progress",
+    "Progress Update",
+    "Progress Notes",
+    "Progress %",
+    "% Complete",
+    "% Completed",
+    "Percent Complete",
+    "Completion",
+    "Action Taken / Update",
+    "Action Taken",
+    "Status Update",
+    "Update",
+    "Updates",
+    "Remarks",
+    "Comments",
+    "Notes"
+  );
+
 // An action is "delayed" when its deadline has passed and it isn't done.
 export const isOverdue = (status, endValue) => {
   if (status === "done") return false;
@@ -139,18 +178,24 @@ export const initiativeRag = (initiative) => {
   return "red";
 };
 
-// Header RAG from its initiatives:
-//   1. any red initiative               → red
-//   2. any amber, < 50% of initiatives   → amber
-//   3. any amber, ≥ 50% of initiatives   → red
-//   4. every initiative purple           → purple
-//   5. otherwise                         → green
+// Header RAG from its initiatives — the amber roll-up is tuned so a single
+// amber initiative does NOT colour the whole topic:
+//   1. any red initiative                    → red
+//   2. ≥ 2 amber AND ≥ 50% of initiatives    → red
+//   3. ≥ 2 amber (but < 50% of initiatives)  → amber
+//   4. 0–1 amber and every initiative purple → purple
+//   5. otherwise (incl. all green / lone amber) → green
 export const headerRag = (initiatives = []) => {
   const rags = initiatives.map((ini) => initiativeRag(ini));
   const total = rags.length;
   if (rags.some((r) => r === "red")) return "red";
   const amber = rags.filter((r) => r === "amber").length;
-  if (amber > 0) return (amber / total) * 100 >= 50 ? "red" : "amber";
+  // A lone amber initiative is tolerated (topic stays green). It takes at least
+  // two ambers to turn the topic amber, and amber reaching half of all
+  // initiatives escalates it to red.
+  if (amber >= 2) {
+    return (amber / total) * 100 >= 50 ? "red" : "amber";
+  }
   if (total > 0 && rags.every((r) => r === "purple")) return "purple";
   return "green";
 };

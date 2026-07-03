@@ -46,7 +46,7 @@ export const CATEGORY_POSITIONS = {
   "Enhance::People::People Development": { x: 625, y: 62 },
   // ── Enhance · Process ──
   "Enhance::Process::CoE Transition": { x: 640, y: 215 },
-  "Enhance::Process::Continuous Improvement Becomes a Way of Life": { x: 480, y: 220 },
+  "Enhance::Process::C I Becomes a Way of Life": { x: 480, y: 220 },
   "Enhance::Process::Core Business function Pilot": { x: 500, y: 320 },
   // ── Enhance · Technology ──
   "Enhance::Technology::Automation strategy": { x: 750, y: 430 },

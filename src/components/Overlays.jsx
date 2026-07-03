@@ -9,37 +9,45 @@ import {
   BOTTOM_LABEL,
 } from "../constants.js";
 
-// Overall timeline duration shown as a single band above all phase headers.
-const TIMELINE_LABEL = "12 to 18 Months";
+// Timeline shown above each phase header — start date hugs the left corner,
+// end date the right corner (blank corners are left empty).
+const PHASE_TIMELINE = {
+  Establish: { start: "May '26", end: "Nov '26" },
+  Enhance: { start: "Dec '26", end: "May '27" },
+  Optimize: { start: "Jun '27", end: "Oct '27" },
+};
 
 export function PhaseHeaders() {
-  // The duration band spans the full width of the three phase headers.
-  const spanX0 = PHASE_BANDS.Establish.x0;
-  const spanX1 = PHASE_BANDS.Optimize.x1;
+  const phases = ["Establish", "Enhance", "Optimize"];
   return (
     <>
-      {/* Overall duration — a single band directly above the phase headers */}
-      <div
-        className="absolute flex items-center justify-center font-bold tracking-wide text-[#1A2F5C] select-none"
-        style={{
-          left: spanX0,
-          top: -8,
-          width: spanX1 - spanX0,
-          height: 34,
-          background: "#EFF1F4",
-          fontSize: 15,
-          letterSpacing: "0.02em",
-          zIndex: 12,
-        }}
-      >
-        {TIMELINE_LABEL}
-      </div>
-
-      {["Establish", "Enhance", "Optimize"].map((phase) => {
+      {phases.map((phase, i) => {
         const band = PHASE_BANDS[phase];
         const width = band.x1 - band.x0;
         return (
           <React.Fragment key={phase}>
+            {/* Per-phase timeline — start date at the left corner, end date at
+                the right corner (blank corners stay empty) */}
+            <div
+              className="absolute flex items-center justify-between font-bold tracking-wide text-[#1A2F5C] select-none"
+              style={{
+                left: band.x0,
+                top: -8,
+                width,
+                height: 34,
+                background: "#EFF1F4",
+                fontSize: 14,
+                letterSpacing: "0.02em",
+                borderRight:
+                  i < phases.length - 1 ? "1px solid #D8DDE4" : undefined,
+                padding: "0 12px",
+                zIndex: 12,
+              }}
+            >
+              <span>{PHASE_TIMELINE[phase].start}</span>
+              <span>{PHASE_TIMELINE[phase].end}</span>
+            </div>
+
             {/* Phase header */}
             <div
               className="absolute flex items-center justify-center font-bold tracking-wide text-white select-none"

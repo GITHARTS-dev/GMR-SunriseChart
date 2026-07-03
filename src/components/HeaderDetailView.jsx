@@ -14,8 +14,8 @@ import {
   Hourglass,
   ListChecks,
   MoreVertical,
-  ShieldAlert,
   Target,
+  TrendingUp,
   Users,
 } from "lucide-react";
 
@@ -24,6 +24,7 @@ import {
   parseDate,
   taskStartDate,
   taskEndDate,
+  taskProgress,
   isOverdue,
   RAG_COLORS,
   initiativeRag,
@@ -32,7 +33,6 @@ import {
   getProgressColor,
 } from "../utils.js";
 import RagIcon from "./RagIcon.jsx";
-import RiskRegister from "./RiskRegister.jsx";
 
 const statusLabel = (status) => {
   if (status === "done") return "Completed";
@@ -132,6 +132,7 @@ function StatCard({ Icon, value, label, bg, fg }) {
 // One action card with a clickable Outcome reveal and an overdue warning.
 function ActionRow({ task }) {
   const [showOutcome, setShowOutcome] = useState(false);
+  const [showProgress, setShowProgress] = useState(false);
 
   const status = STATUS_STYLES[task.status] || STATUS_STYLES.todo;
   const StatusIcon = status.Icon;
@@ -140,6 +141,7 @@ function ActionRow({ task }) {
   const overdue = isOverdue(task.status, end);
   const accountable = taskAccountable(task);
   const outcome = task.outcome || "";
+  const progress = taskProgress(task);
 
   return (
     <div
@@ -184,6 +186,21 @@ function ActionRow({ task }) {
                 <span className="text-slate-400">(Accountable)</span>
               </span>
             ) : null}
+            <button
+              type="button"
+              onClick={() => setShowProgress((v) => !v)}
+              aria-expanded={showProgress}
+              className="inline-flex items-center gap-1.5 font-semibold text-slate-600 transition-colors hover:text-slate-900"
+            >
+              <TrendingUp className="h-3.5 w-3.5 text-slate-400" />
+              Progress
+              <ChevronDown
+                className={`h-3.5 w-3.5 transition-transform duration-200 ${
+                  showProgress ? "rotate-180" : ""
+                }`}
+              />
+            </button>
+
             {outcome ? (
               <button
                 type="button"
@@ -207,6 +224,14 @@ function ActionRow({ task }) {
               {outcome}
             </div>
           ) : null}
+
+          {showProgress ? (
+            <div className="mt-2.5 rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-600">
+              {progress || (
+                <span className="italic text-slate-400">No progress added yet.</span>
+              )}
+            </div>
+          ) : null}
         </div>
 
         <button
@@ -223,14 +248,11 @@ function ActionRow({ task }) {
 
 // Expanded or collapsed initiative block.
 function InitiativeBlock({ initiative, expanded, onToggle }) {
-  const [tab, setTab] = useState("actions");
   const stats = initiative.stats || computeStats(initiative.tasks);
   const pct = stats.pct;
   const progressColor = getProgressColor(pct);
   const outcome = initiative.tasks?.[0]?.outcome || "";
   const rag = initiativeRag(initiative);
-  const risks = initiative.risks || [];
-  const hasRisks = risks.length > 0;
 
   if (!expanded) {
     return (
@@ -304,68 +326,15 @@ function InitiativeBlock({ initiative, expanded, onToggle }) {
         </button>
       </div>
 
-      {hasRisks ? (
-        <div className="flex gap-1 border-b border-slate-200 px-4">
-          <TabButton
-            active={tab === "actions"}
-            onClick={() => setTab("actions")}
-            Icon={ListChecks}
-            label="Actions"
-            count={stats.total}
-          />
-          <TabButton
-            active={tab === "risks"}
-            onClick={() => setTab("risks")}
-            Icon={ShieldAlert}
-            label="FMEA"
-          />
+      <div className="space-y-3 px-4 pb-4 pt-4">
+        <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+          Actions
         </div>
-      ) : null}
-
-      {hasRisks && tab === "risks" ? (
-        <div className="bg-slate-50/60 px-4 py-4">
-          <RiskRegister initiative={initiative} />
-        </div>
-      ) : (
-        <div className="space-y-3 px-4 pb-4 pt-4">
-          {!hasRisks ? (
-            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
-              Actions
-            </div>
-          ) : null}
-          {orderedTasks.map((task, idx) => (
-            <ActionRow key={`${initiative.name}-${idx}-${task.task}`} task={task} />
-          ))}
-        </div>
-      )}
+        {orderedTasks.map((task, idx) => (
+          <ActionRow key={`${initiative.name}-${idx}-${task.task}`} task={task} />
+        ))}
+      </div>
     </div>
-  );
-}
-
-// Segmented tab used inside an expanded initiative (Actions | Risks).
-function TabButton({ active, onClick, Icon, label, count }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`-mb-px inline-flex items-center gap-2 border-b-2 px-3.5 py-2.5 text-sm font-semibold transition-colors ${
-        active
-          ? "border-[#00437A] text-[#00437A]"
-          : "border-transparent text-slate-500 hover:text-slate-700"
-      }`}
-    >
-      <Icon className="h-4 w-4" />
-      {label}
-      {count != null ? (
-        <span
-          className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold ${
-            active ? "bg-[#00437A] text-white" : "bg-slate-200 text-slate-600"
-          }`}
-        >
-          {count}
-        </span>
-      ) : null}
-    </button>
   );
 }
 

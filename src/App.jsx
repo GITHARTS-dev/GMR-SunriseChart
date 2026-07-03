@@ -432,18 +432,148 @@ const fmeaFromWorkbook = (workbook) => {
   return all;
 };
 
+// ─── Detailed Risk Profile (FMEA register) parsing ──────────────────────────
+// The "Risks" sheet is a full FMEA register with a two-level hierarchy encoded
+// in a "Row Type" column: rows marked "Program Outcome (Board Level)" are the
+// parent process steps (blue-banded in Excel); the rows that follow each parent
+// — until the next parent — are its sub-process-step risks. We map every column
+// by header name (tolerant of variants) and keep the before/after RPN profile
+// so the Risk view can show mitigation impact.
+
+// Map each header cell to a field. S/O/D/RPN appear twice (before + after
+// action): the first occurrence is the "before" score, the second the "after".
+const mapRiskColumns = (headerCells) => {
+  const counts = {};
+  const nth = (name) => (counts[name] = (counts[name] || 0) + 1);
+  return headerCells.map((cell) => {
+    const raw = clean(cell).toLowerCase();
+    const k = headerKey(cell);
+    if (!k && !raw) return null;
+    if (k === "phase") return "phase";
+    if (k === "category") return "category";
+    if (k.startsWith("processstep") || k === "process") return "processStep";
+    if (k.startsWith("keyprocessinput") || k.startsWith("processinput")) return "keyProcessInput";
+    if (k.startsWith("failuremode")) return "failureMode";
+    if (k.startsWith("effect")) return "effect";
+    if (k.startsWith("cause")) return "cause";
+    if (k.startsWith("currentcontrol") || k === "controls" || k === "control") return "controls";
+    if (k === "risk" || k === "risklevel") return "level";
+    if (k.startsWith("recommend")) return "recommended";
+    if (k.includes("actiontaken") || k.includes("update")) return "actionTaken";
+    if (k.startsWith("accountable")) return "accountable";
+    if (k.startsWith("responsible")) return "responsible";
+    if (k.startsWith("target")) return "target";
+    if (k.startsWith("status")) return "status";
+    if (k === "action") return "action";
+    if (k.includes("risktheme") || k.startsWith("programrisk")) return "programRiskTheme";
+    if (k.startsWith("rowtype")) return "rowType";
+    if (k === "rpn") return nth("rpn") === 1 ? "rpn" : "rpnAfter";
+    if (k === "s" || k === "sev" || k.startsWith("severity")) return nth("s") === 1 ? "severity" : "severityAfter";
+    if (k === "o" || k === "occ" || k.startsWith("occurrence")) return nth("o") === 1 ? "occurrence" : "occurrenceAfter";
+    if (k === "d" || k === "det" || k.startsWith("detection")) return nth("d") === 1 ? "detection" : "detectionAfter";
+    if (raw.includes("δ") || raw.includes("%") || raw.includes("delta") || raw.includes("reduction")) return "deltaPct";
+    return null;
+  });
+};
+
+// The header row is the one naming Process Step + Failure Mode / Row Type
+// (skips the section-banner row above it).
+const findRiskHeaderRow = (grid) => {
+  const limit = Math.min(grid.length, 15);
+  for (let i = 0; i < limit; i += 1) {
+    const keys = grid[i].map(headerKey);
+    const has = (p) => keys.some((k) => k.startsWith(p));
+    if (
+      (has("processstep") && has("failuremode")) ||
+      (has("processstep") && has("rowtype")) ||
+      (has("failuremode") && has("rowtype"))
+    ) {
+      return i;
+    }
+  }
+  return -1;
+};
+
+// Locate the risk register sheet: prefer one named Risk(s)/FMEA, else the first
+// sheet whose header row looks like an FMEA register.
+const findRiskGrid = (workbook) => {
+  const named = workbook.SheetNames.filter((n) => /risk|fmea/i.test(n));
+  const order = [
+    ...named,
+    ...workbook.SheetNames.filter((n) => !named.includes(n)),
+  ];
+  for (const name of order) {
+    const grid = readSheetGrid(workbook.Sheets[name]);
+    if (findRiskHeaderRow(grid) >= 0) return grid;
+  }
+  return null;
+};
+
+const isProgramOutcomeRow = (rowType) => {
+  const t = String(rowType || "").toLowerCase();
+  return (
+    t.includes("program outcome") ||
+    t.includes("board level") ||
+    t.includes("board-level")
+  );
+};
+
+// Parse the risk register into a two-level tree:
+//   [{ ...parentRisk, children: [ ...subRisk ] }]
+// Parents are "Program Outcome (Board Level)" rows; every following row (until
+// the next such row) is a child. If the sheet has no Row Type column we fall
+// back to the leading glyph (❖ …) / "rolled up from …" marker of parent rows.
+export const riskProfileFromWorkbook = (workbook) => {
+  const grid = findRiskGrid(workbook);
+  if (!grid) return [];
+  const headerRow = findRiskHeaderRow(grid);
+  const fields = mapRiskColumns(grid[headerRow]);
+  const hasRowType = fields.includes("rowType");
+
+  const records = [];
+  for (let i = headerRow + 1; i < grid.length; i += 1) {
+    const cells = grid[i];
+    const rec = {};
+    fields.forEach((f, idx) => {
+      if (!f) return;
+      const v = clean(cells[idx]);
+      if (v && !rec[f]) rec[f] = v; // first occurrence wins
+    });
+    if (!rec.processStep && !rec.failureMode && !rec.rowType) continue;
+
+    const rawStep = rec.processStep || "";
+    const stripped = stripGlyphs(rawStep);
+    rec.hasGlyph = stripped !== rawStep && !!stripped;
+    rec.processStep = stripped;
+    if (rec.keyProcessInput) rec.keyProcessInput = stripGlyphs(rec.keyProcessInput);
+    records.push(rec);
+  }
+
+  const isParent = (rec) =>
+    hasRowType
+      ? isProgramOutcomeRow(rec.rowType)
+      : rec.hasGlyph || /rolled up/i.test(rec.keyProcessInput || "");
+
+  const groups = [];
+  let current = null;
+  for (const rec of records) {
+    if (isParent(rec) || !current) {
+      current = { ...rec, children: [] };
+      groups.push(current);
+    } else {
+      current.children.push(rec);
+    }
+  }
+  return groups;
+};
+
 const dataFromArrayBuffer = (buffer) => {
   const workbook = XLSX.read(buffer, { type: "array" });
   return {
     rows: rowsFromWorkbook(workbook),
     fmeaRows: fmeaFromWorkbook(workbook),
+    riskProfile: riskProfileFromWorkbook(workbook),
   };
-};
-
-// Parse just the FMEA rows out of a standalone workbook (the separate FMEA file).
-const fmeaFromArrayBuffer = (buffer) => {
-  const workbook = XLSX.read(buffer, { type: "array" });
-  return fmeaFromWorkbook(workbook);
 };
 
 // How often to check SharePoint for changes (smart polling).
@@ -463,6 +593,7 @@ export default function App() {
   const isAdmin = isAdminEmail(userEmail);
 
   const [data, setData] = useState({});
+  const [riskProfile, setRiskProfile] = useState([]);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
   const [syncStatus, setSyncStatus] = useState("");
@@ -482,7 +613,11 @@ export default function App() {
       }
 
       const buffer = await downloadFileBuffer(instance);
-      const { rows, fmeaRows: workbookFmea } = dataFromArrayBuffer(buffer);
+      const {
+        rows,
+        fmeaRows: workbookFmea,
+        riskProfile: mainRiskProfile,
+      } = dataFromArrayBuffer(buffer);
       if (!rows.length) {
         throw new Error("No valid rows were found in the Excel file.");
       }
@@ -493,12 +628,19 @@ export default function App() {
       }
 
       // FMEA lives in a separate SharePoint workbook. Fetch + parse it, but never
-      // let a problem there break the main dashboard — just skip the risks.
+      // let a problem there break the main dashboard — just skip the risks. The
+      // detailed Risk-register view prefers the main workbook's "Risks" sheet
+      // and falls back to this file when the main workbook has none.
       let fmeaRows = workbookFmea;
+      let riskProfileData = mainRiskProfile;
       if (FMEA_FILE_URL && FMEA_FILE_URL !== EXCEL_FILE_URL) {
         try {
           const fmeaBuffer = await downloadFileBuffer(instance, FMEA_FILE_URL);
-          fmeaRows = [...workbookFmea, ...fmeaFromArrayBuffer(fmeaBuffer)];
+          const fmeaWorkbook = XLSX.read(fmeaBuffer, { type: "array" });
+          fmeaRows = [...workbookFmea, ...fmeaFromWorkbook(fmeaWorkbook)];
+          if (!riskProfileData.length) {
+            riskProfileData = riskProfileFromWorkbook(fmeaWorkbook);
+          }
         } catch (e) {
           // eslint-disable-next-line no-console
           console.warn("FMEA file could not be loaded:", e?.message || e);
@@ -507,6 +649,7 @@ export default function App() {
       attachFmeaToTree(tree, fmeaRows);
 
       setData(tree);
+      setRiskProfile(riskProfileData);
       lastModifiedRef.current = lastModified;
       setSyncStatus(`Updated ${new Date().toLocaleTimeString()}`);
     } catch (e) {
@@ -556,6 +699,7 @@ export default function App() {
   return (
     <DashboardCanvas
       tree={data}
+      riskProfile={riskProfile}
       fileName="SharePoint Excel"
       sourceUrl={EXCEL_FILE_URL}
       isAdmin={isAdmin}

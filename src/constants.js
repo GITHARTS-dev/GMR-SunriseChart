@@ -33,7 +33,6 @@ export const CATEGORY_POSITIONS = {
   "Establish::People::Values In Action": { x: 90, y: 200 },
   // ── Establish · Process ──
   "Establish::Process::Move from projects to CI culture": { x: 90, y: 300 },
-  "Establish::Process::Portfolio Expansion": { x: 265, y: 300 },
   "Establish::Process::Process health": { x: 175, y: 400 },
   // ── Establish · Technology ──
   "Establish::Technology::Tech Strategy for GCC": { x: 230, y: 530 },
@@ -48,6 +47,7 @@ export const CATEGORY_POSITIONS = {
   "Enhance::Process::CoE Transition": { x: 640, y: 215 },
   "Enhance::Process::C I Becomes a Way of Life": { x: 480, y: 220 },
   "Enhance::Process::Core Business function Pilot": { x: 500, y: 320 },
+  "Enhance::Process::Portfolio Expansion": { x: 665, y: 300 },
   // ── Enhance · Technology ──
   "Enhance::Technology::Automation strategy": { x: 750, y: 430 },
   "Enhance::Technology::S/4 HANA": { x: 600, y: 440},

@@ -166,12 +166,29 @@ export const getRagColor = (level) => RAG_COLORS[level] || RAG_COLORS.green;
 export const delayedCount = (tasks = []) =>
   tasks.filter((t) => isOverdue(t.status, taskEndDate(t))).length;
 
-// Per-initiative RAG: every action missing both start and end date → purple;
-// otherwise no delayed actions → green, exactly one delayed → amber,
-// more than one delayed → red.
+// An action that hasn't reached its start date yet — it has a start date and
+// that date is still in the future (today hasn't reached it).
+const notYetStarted = (task) => {
+  const start = parseDate(taskStartDate(task));
+  if (!start) return false;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return start > today;
+};
+
+// Per-initiative RAG:
+//   • PURPLE ("yet to start") when the initiative hasn't begun — either every
+//     action has no start AND no end date, or every action's start date is
+//     still in the future (today hasn't reached it).
+//   • otherwise by delayed (overdue) actions: 0 → green, 1 → amber, > 1 → red.
 export const initiativeRag = (initiative) => {
   const tasks = initiative?.tasks || [];
-  if (tasks.length > 0 && tasks.every(hasNoDates)) return "purple";
+  if (
+    tasks.length > 0 &&
+    (tasks.every(hasNoDates) || tasks.every(notYetStarted))
+  ) {
+    return "purple";
+  }
   const d = delayedCount(tasks);
   if (d === 0) return "green";
   if (d === 1) return "amber";

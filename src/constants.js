@@ -32,8 +32,8 @@ export const CATEGORY_POSITIONS = {
   "Establish::People::Design and Execute an attractive EVP": { x: 260, y: 150 },
   "Establish::People::Values In Action": { x: 90, y: 200 },
   // ── Establish · Process ──
-  "Establish::Process::Move from projects to CI culture": { x: 90, y: 300 },
-  "Establish::Process::Process health": { x: 175, y: 400 },
+  "Establish::Process::Move from projects to CI culture": { x: 90, y: 360 },
+  "Establish::Process::Process health": { x: 250, y: 360 },
   // ── Establish · Technology ──
   "Establish::Technology::Tech Strategy for GCC": { x: 230, y: 530 },
   "Establish::Technology::Tech in Problem Solving": { x: 410, y: 520 },

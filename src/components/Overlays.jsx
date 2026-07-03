@@ -9,63 +9,91 @@ import {
   BOTTOM_LABEL,
 } from "../constants.js";
 
-// Timeline shown above each phase header — start date hugs the left corner,
-// end date the right corner (blank corners are left empty).
-const PHASE_TIMELINE = {
-  Establish: { start: "May '26", end: "Nov '26" },
-  Enhance: { start: "Dec '26", end: "May '27" },
-  Optimize: { start: "Jun '27", end: "Oct '27" },
-};
+// Timeline markers along the band above the phase headers. `x` is the canvas
+// coordinate; `anchor` decides how the label sits on it: "start" = left corner,
+// "middle" = centred on that point (used on a phase boundary), "end" = right
+// corner. Boundaries: Establish|Enhance = 430, Enhance|Optimize = 775.
+const TIMELINE_MARKERS = [
+  { text: "May '26", x: PHASE_BANDS.Establish.x0 + 12, anchor: "start" },
+  { text: "Dec '26", x: PHASE_BANDS.Establish.x1, anchor: "middle" },
+  { text: "Jun '27", x: PHASE_BANDS.Enhance.x1, anchor: "middle" },
+  { text: "Oct '27", x: PHASE_BANDS.Optimize.x1 - 12, anchor: "end" },
+];
+
+const anchorTransform = (anchor) =>
+  anchor === "middle"
+    ? "translateX(-50%)"
+    : anchor === "end"
+    ? "translateX(-100%)"
+    : "none";
 
 export function PhaseHeaders() {
   const phases = ["Establish", "Enhance", "Optimize"];
   return (
     <>
+      {/* Grey timeline band — one segment per phase, with dividers */}
       {phases.map((phase, i) => {
+        const band = PHASE_BANDS[phase];
+        return (
+          <div
+            key={`timeline-${phase}`}
+            className="absolute"
+            style={{
+              left: band.x0,
+              top: -8,
+              width: band.x1 - band.x0,
+              height: 34,
+              background: "#EFF1F4",
+              borderRight:
+                i < phases.length - 1 ? "1px solid #D8DDE4" : undefined,
+              zIndex: 11,
+            }}
+          />
+        );
+      })}
+
+      {/* Timeline labels, positioned along the band */}
+      {TIMELINE_MARKERS.map((m) => (
+        <div
+          key={m.text}
+          className="absolute flex items-center font-bold tracking-wide text-[#1A2F5C] select-none"
+          style={{
+            left: m.x,
+            top: -8,
+            height: 34,
+            fontSize: 14,
+            letterSpacing: "0.02em",
+            whiteSpace: "nowrap",
+            transform: anchorTransform(m.anchor),
+            zIndex: 13,
+          }}
+        >
+          {m.text}
+        </div>
+      ))}
+
+      {/* Phase headers */}
+      {phases.map((phase) => {
         const band = PHASE_BANDS[phase];
         const width = band.x1 - band.x0;
         return (
-          <React.Fragment key={phase}>
-            {/* Per-phase timeline — start date at the left corner, end date at
-                the right corner (blank corners stay empty) */}
-            <div
-              className="absolute flex items-center justify-between font-bold tracking-wide text-[#1A2F5C] select-none"
-              style={{
-                left: band.x0,
-                top: -8,
-                width,
-                height: 34,
-                background: "#EFF1F4",
-                fontSize: 14,
-                letterSpacing: "0.02em",
-                borderRight:
-                  i < phases.length - 1 ? "1px solid #D8DDE4" : undefined,
-                padding: "0 12px",
-                zIndex: 12,
-              }}
-            >
-              <span>{PHASE_TIMELINE[phase].start}</span>
-              <span>{PHASE_TIMELINE[phase].end}</span>
-            </div>
-
-            {/* Phase header */}
-            <div
-              className="absolute flex items-center justify-center font-bold tracking-wide text-white select-none"
-              style={{
-                left: band.x0,
-                top: 28,
-                width,
-                height: HEADER_H,
-                background: PHASE_COLORS[phase].header,
-                fontSize: 22,
-                letterSpacing: "0.02em",
-                boxShadow: "inset 0 -2px 0 rgba(0,0,0,0.15)",
-                zIndex: 12,
-              }}
-            >
-              {phase}
-            </div>
-          </React.Fragment>
+          <div
+            key={phase}
+            className="absolute flex items-center justify-center font-bold tracking-wide text-white select-none"
+            style={{
+              left: band.x0,
+              top: 28,
+              width,
+              height: HEADER_H,
+              background: PHASE_COLORS[phase].header,
+              fontSize: 22,
+              letterSpacing: "0.02em",
+              boxShadow: "inset 0 -2px 0 rgba(0,0,0,0.15)",
+              zIndex: 12,
+            }}
+          >
+            {phase}
+          </div>
         );
       })}
     </>

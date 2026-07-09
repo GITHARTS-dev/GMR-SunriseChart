@@ -1,14 +1,16 @@
 {
-  "name": "transformation-dashboard",
+  "name": "gmr-sunrise-dashboard",
   "private": true,
   "version": "1.0.0",
   "type": "module",
-  "description": "Transformation Maturity Framework Dashboard — Establish → Enhance → Optimize",
+  "description": "GMR Sunrise — Transformation Maturity Framework Dashboard (Establish → Enhance → Optimize)",
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview",
-    "deploy": "vite build && swa deploy --env production"
+    "preview": "vite preview"
   },
   "dependencies": {
     "@azure/msal-browser": "^5.15.0",

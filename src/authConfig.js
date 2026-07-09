@@ -5,8 +5,9 @@
 // is already wired up.
 // ─────────────────────────────────────────────────────────────────────────────
 
-// All values come from environment variables (see .env locally, and the Vercel
-// project settings in production). Vite only exposes vars prefixed with VITE_.
+// All values come from environment variables (see .env locally, and the build
+// environment in CI / Azure). Vite only exposes vars prefixed with VITE_, and
+// they are embedded at build time — see DEPLOY_TO_AZURE.md.
 
 // From: App registration → Overview → "Application (client) ID"
 export const CLIENT_ID = import.meta.env.VITE_CLIENT_ID;
@@ -18,11 +19,6 @@ export const TENANT_ID = import.meta.env.VITE_TENANT_ID;
 // resolves the file from this link via the Graph /shares endpoint — no
 // Site/Drive/Item IDs needed.
 export const EXCEL_FILE_URL = import.meta.env.VITE_EXCEL_FILE_URL;
-
-// The SharePoint FMEA (risk register) workbook — a separate file whose rows are
-// matched to initiatives by name. Set VITE_FMEA_FILE_URL in .env (dev) and the
-// Vercel project settings (prod). Unset → the FMEA data simply isn't loaded.
-export const FMEA_FILE_URL = import.meta.env.VITE_FMEA_FILE_URL;
 
 // Comma-separated list of emails allowed to toggle task completion (everyone
 // else is read-only). e.g. VITE_ADMIN_EMAILS="a@x.com,b@x.com"

@@ -1,11 +1,10 @@
 import React, { useState, useEffect, useRef } from "react";
-import * as XLSX from "xlsx";
 import { useMsal } from "@azure/msal-react";
 
 import DashboardCanvas from "./components/DashboardCanvas.jsx";
 import { groupData, attachFmeaToTree } from "./utils.js";
 import { getFileLastModified, downloadFileBuffer } from "./graphExcel.js";
-import { isAdminEmail, EXCEL_FILE_URL, FMEA_FILE_URL, loginRequest } from "./authConfig.js";
+import { isAdminEmail, EXCEL_FILE_URL, loginRequest } from "./authConfig.js";
 
 const HEADER_ALIASES = {
   phase: ["phase", "stage", "maturityphase", "maturitystage"],
@@ -567,7 +566,15 @@ export const riskProfileFromWorkbook = (workbook) => {
   return groups;
 };
 
-const dataFromArrayBuffer = (buffer) => {
+// SheetJS is large (~40% of the bundle) and only needed once the user has
+// signed in and a workbook has actually been downloaded. Load it on demand so
+// it stays out of the initial bundle and the login screen renders instantly.
+// The namespace is cached after first use. Every XLSX.* call below runs
+// synchronously inside dataFromArrayBuffer, after this await resolves.
+let XLSX;
+
+const dataFromArrayBuffer = async (buffer) => {
+  if (!XLSX) XLSX = await import("xlsx");
   const workbook = XLSX.read(buffer, { type: "array" });
   return {
     rows: rowsFromWorkbook(workbook),
@@ -617,7 +624,7 @@ export default function App() {
         rows,
         fmeaRows: workbookFmea,
         riskProfile: mainRiskProfile,
-      } = dataFromArrayBuffer(buffer);
+      } = await dataFromArrayBuffer(buffer);
       if (!rows.length) {
         throw new Error("No valid rows were found in the Excel file.");
       }
@@ -627,25 +634,9 @@ export default function App() {
         throw new Error("No valid rows found in the Excel file.");
       }
 
-      // FMEA lives in a separate SharePoint workbook. Fetch + parse it, but never
-      // let a problem there break the main dashboard — just skip the risks. The
-      // detailed Risk-register view prefers the main workbook's "Risks" sheet
-      // and falls back to this file when the main workbook has none.
-      let fmeaRows = workbookFmea;
-      let riskProfileData = mainRiskProfile;
-      if (FMEA_FILE_URL && FMEA_FILE_URL !== EXCEL_FILE_URL) {
-        try {
-          const fmeaBuffer = await downloadFileBuffer(instance, FMEA_FILE_URL);
-          const fmeaWorkbook = XLSX.read(fmeaBuffer, { type: "array" });
-          fmeaRows = [...workbookFmea, ...fmeaFromWorkbook(fmeaWorkbook)];
-          if (!riskProfileData.length) {
-            riskProfileData = riskProfileFromWorkbook(fmeaWorkbook);
-          }
-        } catch (e) {
-          // eslint-disable-next-line no-console
-          console.warn("FMEA file could not be loaded:", e?.message || e);
-        }
-      }
+      // FMEA / risk data comes from the main workbook's own sheets.
+      const fmeaRows = workbookFmea;
+      const riskProfileData = mainRiskProfile;
       attachFmeaToTree(tree, fmeaRows);
 
       setData(tree);

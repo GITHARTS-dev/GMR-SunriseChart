@@ -128,8 +128,8 @@ and how to run the project locally.
 ## 7. Install and Run
 
 ```bash
-# Install dependencies (the flag avoids a known Vite peer-version warning)
-npm install --legacy-peer-deps
+# Install dependencies
+npm install
 
 # Start the development server
 npm run dev

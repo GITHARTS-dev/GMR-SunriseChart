@@ -1,3 +1,12 @@
+# Azure Static Web Apps CI/CD (optional — for GitHub-based deployment).
+#
+# Before this works in a new tenant, create these GitHub repository secrets
+# (Settings → Secrets and variables → Actions):
+#   • AZURE_STATIC_WEB_APPS_API_TOKEN_BLUE_DESERT_033CAB110  (deployment token
+#     from your Azure Static Web App → "Manage deployment token")
+#   • VITE_CLIENT_ID, VITE_TENANT_ID, VITE_EXCEL_FILE_URL, VITE_ADMIN_EMAILS
+#     (the build embeds these — see the env: block on the build step, and
+#     DEPLOY_TO_AZURE.md §5). Without them the deployed site loads blank.
 name: Azure Static Web Apps CI/CD
 
 on:
@@ -35,6 +44,13 @@ jobs:
       - name: Build And Deploy
         id: builddeploy
         uses: Azure/static-web-apps-deploy@v1
+        env:
+          # Vite embeds these into the build. They must be present here or the
+          # deployed site loads blank (see DEPLOY_TO_AZURE.md §5).
+          VITE_CLIENT_ID: ${{ secrets.VITE_CLIENT_ID }}
+          VITE_TENANT_ID: ${{ secrets.VITE_TENANT_ID }}
+          VITE_EXCEL_FILE_URL: ${{ secrets.VITE_EXCEL_FILE_URL }}
+          VITE_ADMIN_EMAILS: ${{ secrets.VITE_ADMIN_EMAILS }}
         with:
           azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_BLUE_DESERT_033CAB110 }}
           action: "upload"

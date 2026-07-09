@@ -13,7 +13,7 @@ import AccountMenu from "./AccountMenu.jsx";
 import RagLegend from "./RagLegend.jsx";
 
 import { CANVAS_W, CANVAS_H } from "../constants.js";
-import { flattenForRender, computeStats, getProgressColor } from "../utils.js";
+import { flattenForRender } from "../utils.js";
 
 export default function DashboardCanvas({
   tree,
@@ -49,11 +49,6 @@ export default function DashboardCanvas({
   const currentSelected = selected
     ? items.find((i) => i.key === selected)
     : null;
-
-  const totalStats = useMemo(() => {
-    const all = items.flatMap((i) => i.tasks);
-    return computeStats(all);
-  }, [items]);
 
   const onCategoryClick = (item) => {
     if (item.locked) return;
@@ -211,21 +206,6 @@ export default function DashboardCanvas({
 
         {/* Stats + actions + account */}
         <div className="flex items-center gap-2.5">
-          {/* <div className="flex h-9 items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3">
-            <span className="text-[10.5px] font-semibold uppercase tracking-wider text-slate-400">
-              Overall
-            </span>
-            <span
-              className="text-[14px] font-bold"
-              style={{ color: getProgressColor(totalStats.pct) }}
-            >
-              {totalStats.pct}%
-            </span>
-            <span className="text-[12px] font-medium text-slate-400">
-              {totalStats.done}/{totalStats.total}
-            </span>
-          </div> */}
-
           {sheetSyncStatus ? (
             <span className="hidden max-w-[150px] truncate text-[11px] text-slate-400 xl:inline">
               {sheetSyncStatus}

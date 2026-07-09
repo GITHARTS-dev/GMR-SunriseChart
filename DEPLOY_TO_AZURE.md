@@ -39,7 +39,7 @@ rely on them for the `VITE_` variables.
 From the project folder, with your `.env` filled in (see SETUP_AND_RUN.md):
 
 ```bash
-npm install --legacy-peer-deps
+npm install
 npm run build
 ```
 
@@ -108,19 +108,30 @@ Use this if the customer prefers automated deployments from a Git repository.
 
 ---
 
-## 6. SPA Routing Fallback (recommended)
+## 6. Routing + Security Headers (already included)
 
-So that page refreshes and the login redirect always return the app, add a file
-named **`staticwebapp.config.json`** in the project root (it is copied into the
-build). Minimal content:
+The project ships a **`staticwebapp.config.json`** in the root (Azure copies it
+into the deployment automatically). You do **not** need to create it. It does two
+things:
 
-```json
-{
-  "navigationFallback": {
-    "rewrite": "/index.html"
-  }
-}
-```
+1. **SPA routing fallback** — page refreshes and the Microsoft login redirect
+   always return `index.html` (deep links don't 404).
+2. **Security headers** applied to every response:
+   - `Content-Security-Policy` — restricts network/scripts/styles to this app
+     plus the Microsoft endpoints it must reach (Entra login, Graph, SharePoint)
+     and Google Fonts.
+   - `Strict-Transport-Security`, `X-Content-Type-Options: nosniff`,
+     `X-Frame-Options: DENY`, `Referrer-Policy`, `Permissions-Policy`,
+     `Cross-Origin-Opener-Policy`.
+
+> **Verify after your first deploy (important).** The Content-Security-Policy is
+> scoped to the standard Microsoft hosts, but tenants occasionally serve the
+> SharePoint file download from a different host. After deploying, sign in and
+> confirm the dashboard loads its data. If it does not, open the browser
+> DevTools **Console** (F12) and look for a `Content-Security-Policy` violation
+> naming a blocked host — add that host to the `connect-src` list in
+> `staticwebapp.config.json`, rebuild, and redeploy. You can check the header
+> grade at https://securityheaders.com after deploying.
 
 ---
 

@@ -46,14 +46,14 @@ No critical, high, or medium-severity vulnerabilities were identified across the
 source review, the dependency audit (0 known vulnerabilities), or the automated
 dynamic scan. The dynamic scan crawled the application and ran active checks for
 injection, cross-site scripting, sensitive-data exposure and open redirects, and
-returned **no such findings**. Three **low-severity** and three
+returned **no such findings**. Three **low-severity** and two
 **informational** observations were recorded; each is a common, well-understood
 trade-off, and each is accompanied by a recommendation.
 
 > **Scope of this rating.** This assessment reflects the application as deployed
 > on **Azure Static Web Apps**. If it is later migrated to a different hosting
 > platform, the static/code findings remain valid, but the dynamic checks (§8)
-> should be re-run against the new URL and the platform-portability item **F-06**
+> should be re-run against the new URL and the platform-portability item **F-05**
 > must be actioned.
 
 ### Findings at a glance
@@ -64,8 +64,8 @@ trade-off, and each is accompanied by a recommendation.
 | High | 0 |
 | Medium | 0 |
 | Low | 3 |
-| Informational | 3 |
-| **Total** | **6** |
+| Informational | 2 |
+| **Total** | **5** |
 
 ---
 
@@ -92,8 +92,6 @@ respective providers' own assurance programmes:
 - Microsoft Graph API (`graph.microsoft.com`)
 - SharePoint Online (`*.sharepoint.com`)
 - Azure Static Web Apps platform (except its externally-observable TLS/header configuration)
-- Google Fonts (`fonts.googleapis.com`, `fonts.gstatic.com`)
-
 The assessment covered **how the application uses** these services, not the
 services themselves.
 
@@ -163,8 +161,7 @@ Security-relevant properties:
 | F-02 | Access tokens accessible to same-origin JavaScript (`sessionStorage`) | Low | 3.1 | Open (mitigated) |
 | F-03 | Weak TLS cipher suites offered by the hosting platform | Low | 4.2 | Open (platform-managed) |
 | F-04 | Public configuration values embedded in the JS bundle | Informational | 0.0 | By design |
-| F-05 | Third-party resource load (Google Fonts) | Informational | 0.0 | Open (optional) |
-| F-06 | Security headers/CSP are hosting-platform-specific (Azure SWA) | Informational | 0.0 | Open (portability) |
+| F-05 | Security headers/CSP are hosting-platform-specific (Azure SWA) | Informational | 0.0 | Open (portability) |
 
 ---
 
@@ -185,7 +182,7 @@ Security-relevant properties:
 `style-src` directive includes `'unsafe-inline'`:
 
 ```
-style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+style-src 'self' 'unsafe-inline';
 ```
 
 The automated Snyk scan independently flagged the same single issue —
@@ -293,30 +290,7 @@ and `.env` is git-ignored.)
 
 ---
 
-### F-05 — Third-party resource load (Google Fonts)  **[Static]**
-
-| | |
-|---|---|
-| **Severity** | Informational |
-| **CVSS** | 0.0 |
-| **Component** | `index.html` (font `<link>`s); CSP `font-src` / `style-src` |
-
-**Description.** The application loads web fonts from Google
-(`fonts.googleapis.com`, `fonts.gstatic.com`). These hosts are explicitly
-allow-listed in the CSP. This causes end-user browsers to make requests to a
-third party (Google) for typography.
-
-**Impact.** A minor **privacy** consideration (Google receives request metadata
-such as IP address), not a security vulnerability. No application or programme
-data is sent.
-
-**Recommendation.** Acceptable for most organisations. If the customer's data-
-privacy policy disallows third-party font hosting, self-host the fonts and
-remove the two Google hosts from the CSP.
-
----
-
-### F-06 — Security headers/CSP are hosting-platform-specific (Azure SWA)  **[Static]**
+### F-05 — Security headers/CSP are hosting-platform-specific (Azure SWA)  **[Static]**
 
 | | |
 |---|---|
@@ -363,7 +337,8 @@ the Entra redirect URI to the new domain after any migration.
 | P-1 | Strictly read-only — no edit/write capability in the UI and no write path to SharePoint | Source review |
 | P-2 | No dangerous DOM sinks (`eval`, `dangerouslySetInnerHTML`, `innerHTML`, `document.write`) | Source review — none present |
 | P-3 | All external (workbook) data rendered as auto-escaped text by React | Source review |
-| P-4 | Zero known dependency vulnerabilities | `npm audit` — 0 across 138 deps |
+| P-4 | Zero known dependency vulnerabilities | `npm audit` — 0 across all dependencies |
+| P-4b | No third-party runtime requests — fonts self-hosted (`@fontsource`); app talks only to Microsoft | Source review |
 | P-5 | No injection / XSS / open-redirect / sensitive-data findings in the dynamic scan | Snyk API & Web DAST |
 | P-6 | Strict CSP for scripts (`script-src 'self'`, `object-src 'none'`, `frame-ancestors 'none'`, `base-uri 'self'`) | `staticwebapp.config.json` |
 | P-7 | Full HTTP security-header set — securityheaders.com **A+** | `staticwebapp.config.json` + D-1 |
@@ -417,8 +392,7 @@ Recommended actions:
    Front Door for a stricter TLS policy if required.
 3. Perform the one post-deployment CSP verification (confirm the SharePoint
    download host is allow-listed — see the handover document).
-4. **F-05** (Google Fonts) — optional; self-host fonts if policy requires.
-5. **F-06** — if hosting ever moves off Azure Static Web Apps, re-implement the
+4. **F-05** — if hosting ever moves off Azure Static Web Apps, re-implement the
    security headers and re-run §8 against the new URL.
 
 ---
@@ -426,7 +400,7 @@ Recommended actions:
 ## 10. Appendices
 
 - **Appendix A** — Tooling: manual source review + **Snyk Code** (SAST);
-  `npm audit` + **Snyk Open Source** (SCA); **Snyk API & Web** (DAST).
+  `npm audit` (SCA); **Snyk API & Web** (DAST).
 - **Appendix B** — Snyk API & Web scan report (PDF export attached).
 - **Appendix C** — Evidence screenshots (D-1 to D-9).
 - **Appendix D** — References: OWASP Top 10 (2021), OWASP WSTG, OWASP ASVS,

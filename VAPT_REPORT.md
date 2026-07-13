@@ -179,7 +179,7 @@ Security-relevant properties:
 | **Severity** | Low |
 | **CVSS v3.1** | 3.1 — `AV:N/AC:H/PR:N/UI:R/S:U/C:L/I:N/A:N` |
 | **OWASP** | A05:2021 – Security Misconfiguration |
-| **Component** | `staticwebapp.config.json` → `Content-Security-Policy` |
+| **Component** | `public/staticwebapp.config.json` → `Content-Security-Policy` |
 
 **Description.** The CSP is strict for scripts (`script-src 'self'`,
 `object-src 'none'`, `frame-ancestors 'none'`, `base-uri 'self'`), but the
@@ -283,7 +283,7 @@ remove the two Google hosts from the CSP.
 |---|---|
 | **Severity** | Informational (deployment portability) |
 | **CVSS v3.1** | 0.0 |
-| **Component** | `staticwebapp.config.json` |
+| **Component** | `public/staticwebapp.config.json` |
 
 **Description.** The application's entire HTTP-header defence — Content-Security-
 Policy, HSTS, X-Frame-Options, X-Content-Type-Options, Referrer-Policy,
@@ -342,13 +342,13 @@ and record the outcomes here.
 
 | # | Dynamic check | Expected result | Tool result |
 |---|---------------|-----------------|-------------|
-| D-1 | Security-header scan (e.g. securityheaders.com / scanner) | A/A+; all headers from P-6 present | _<paste>_ |
-| D-2 | TLS/SSL configuration scan | TLS 1.2+; no weak ciphers; valid cert | _<paste>_ |
+| D-1 | Security-header scan (securityheaders.com) | A/A+; all headers from P-6 present | **PASS — A+, all 6 headers present (CSP, HSTS, X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy). 11 Jul 2026.** |
+| D-2 | TLS/SSL configuration scan (Qualys SSL Labs) | TLS 1.2+; no weak ciphers; valid cert | **PASS — Grade A, TLS 1.3, valid cert, CAA present. 11 Jul 2026.** |
 | D-3 | Automated crawl + active XSS/injection scan (authenticated) | No script-executing findings | _<paste>_ |
 | D-4 | CSP effectiveness / bypass attempt | Inline/external script blocked | _<paste>_ |
-| D-5 | Clickjacking (framing) test | Page refuses to frame (`DENY`) | _<paste>_ |
-| D-6 | Authentication test: unassigned account | Blocked by Entra before app loads | _<paste>_ |
-| D-7 | Session handling: sign-out completeness, token expiry | Tokens cleared; no reuse after sign-out | _<paste>_ |
+| D-5 | Clickjacking (framing) test | Page refuses to frame (`DENY`) | **PASS — site refused to load in an iframe; browser blocked framing per `X-Frame-Options: DENY`. 11 Jul 2026.** |
+| D-6 | Authentication test: unassigned account | Blocked by Entra before app loads | **PASS — unassigned user rejected by Entra (AADSTS50105) before the app loaded. 11 Jul 2026.** |
+| D-7 | Session handling: sign-out completeness, token expiry | Tokens cleared; no reuse after sign-out | **PASS — after sign-out, returned to the sign-in screen and all MSAL tokens cleared from `sessionStorage`. 11 Jul 2026.** |
 | D-8 | Sensitive-data-in-response scan | No secrets/tokens/PII in served assets | _<paste>_ |
 | D-9 | OAuth redirect-URI / state handling | No open-redirect; state/PKCE enforced | _<paste>_ |
 

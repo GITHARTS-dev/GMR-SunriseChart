@@ -519,7 +519,7 @@
         <dl class="kv">
           <dt>CVSS v3.1</dt><dd>3.1 — <code>AV:N/AC:H/PR:N/UI:R/S:U/C:L/I:N/A:N</code></dd>
           <dt>OWASP</dt><dd>A05:2021 – Security Misconfiguration</dd>
-          <dt>Component</dt><dd><code>staticwebapp.config.json</code> → Content-Security-Policy</dd>
+          <dt>Component</dt><dd><code>public/staticwebapp.config.json</code> → Content-Security-Policy</dd>
         </dl>
         <div class="f-block"><span class="h">Description</span><p>The CSP is strict for scripts (<code>script-src 'self'</code>, <code>object-src 'none'</code>, <code>frame-ancestors 'none'</code>), but <code>style-src</code> includes <code>'unsafe-inline'</code> to support the styling approach (Tailwind utility classes, Framer Motion inline styles):</p><pre>style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;</pre></div>
         <div class="f-block"><span class="h">Impact</span><p><code>'unsafe-inline'</code> for styles permits injected inline CSS, theoretically abusable for limited UI-redress or CSS-based inference. <strong>Script injection remains fully blocked</strong>, so practical risk is low — an attacker cannot execute JavaScript via this weakness.</p></div>
@@ -576,7 +576,7 @@
         <div class="f-head"><span class="f-id">F-05</span><h3 class="f-title">Security headers/CSP are hosting-platform-specific (Azure SWA)</h3><span class="sev sev-info">Info</span><span class="f-tag">Static · Portability</span></div>
         <dl class="kv">
           <dt>CVSS v3.1</dt><dd>0.0 — deployment portability</dd>
-          <dt>Component</dt><dd><code>staticwebapp.config.json</code></dd>
+          <dt>Component</dt><dd><code>public/staticwebapp.config.json</code></dd>
         </dl>
         <div class="f-block"><span class="h">Description</span><p>The application's entire HTTP-header defence — CSP, HSTS, X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy, COOP — is delivered through <code>staticwebapp.config.json</code>, which is <strong>only honoured by Azure Static Web Apps</strong>. On any other host this file is <strong>silently ignored</strong> and none of these protections apply unless re-implemented using that platform's own mechanism.</p></div>
         <div class="f-block"><span class="h">Impact</span><p>No impact while hosted on Azure Static Web Apps (as tested). If migrated to another platform without re-implementing the headers, the app would lose its CSP, HSTS, clickjacking, and MIME-sniffing protections — a significant security regression.</p></div>
@@ -626,16 +626,15 @@
         <table class="data">
           <thead><tr><th>#</th><th>Dynamic check</th><th>Expected result</th><th>Tool result</th></tr></thead>
           <tbody>
-            <tr><td class="idc">D-1</td><td>Security-header scan</td><td>A / A+; all headers present</td><td class="fill">&lt;paste&gt;</td></tr>
-            <tr><td class="idc">D-2</td><td>TLS/SSL configuration scan</td><td>TLS 1.2+; no weak ciphers; valid cert</td><td class="fill">&lt;paste&gt;</td></tr>
-            <tr><td class="idc">D-3</td><td>Authenticated crawl + active XSS/injection scan</td><td>No script-executing findings</td><td class="fill">&lt;paste&gt;</td></tr>
-            <tr><td class="idc">D-4</td><td>CSP effectiveness / bypass attempt</td><td>Inline/external script blocked</td><td class="fill">&lt;paste&gt;</td></tr>
-            <tr><td class="idc">D-5</td><td>Clickjacking (framing) test</td><td>Page refuses to frame (DENY)</td><td class="fill">&lt;paste&gt;</td></tr>
-            <tr><td class="idc">D-6</td><td>Auth: unassigned account</td><td>Blocked by Entra before app loads</td><td class="fill">&lt;paste&gt;</td></tr>
-            <tr><td class="idc">D-7</td><td>Authz: Viewer vs Editor</td><td>No data change possible either way</td><td class="fill">&lt;paste&gt;</td></tr>
-            <tr><td class="idc">D-8</td><td>Session: sign-out &amp; token expiry</td><td>Tokens cleared; no reuse after sign-out</td><td class="fill">&lt;paste&gt;</td></tr>
-            <tr><td class="idc">D-9</td><td>Sensitive-data-in-response scan</td><td>No secrets/tokens/PII in served assets</td><td class="fill">&lt;paste&gt;</td></tr>
-            <tr><td class="idc">D-10</td><td>OAuth redirect-URI / state handling</td><td>No open-redirect; state/PKCE enforced</td><td class="fill">&lt;paste&gt;</td></tr>
+            <tr><td class="idc">D-1</td><td>Security-header scan (securityheaders.com)</td><td>A / A+; all headers present</td><td><strong style="color:var(--ok)">PASS — A+</strong>, all 6 headers present (CSP, HSTS, X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy). 11 Jul 2026.</td></tr>
+            <tr><td class="idc">D-2</td><td>TLS/SSL configuration scan (Qualys SSL Labs)</td><td>TLS 1.2+; no weak ciphers; valid cert</td><td><strong style="color:var(--ok)">PASS — Grade A</strong>, TLS 1.3, valid cert, CAA present. 11 Jul 2026.</td></tr>
+            <tr><td class="idc">D-3</td><td>Authenticated crawl + active XSS/injection scan</td><td>No script-executing findings</td><td class="fill">&lt;paste — Part B (Probely)&gt;</td></tr>
+            <tr><td class="idc">D-4</td><td>CSP effectiveness / bypass attempt</td><td>Inline/external script blocked</td><td class="fill">&lt;paste — Part B (Probely)&gt;</td></tr>
+            <tr><td class="idc">D-5</td><td>Clickjacking (framing) test</td><td>Page refuses to frame (DENY)</td><td><strong style="color:var(--ok)">PASS</strong> — site refused to load in an iframe; blocked per <code>X-Frame-Options: DENY</code>. 11 Jul 2026.</td></tr>
+            <tr><td class="idc">D-6</td><td>Auth: unassigned account</td><td>Blocked by Entra before app loads</td><td><strong style="color:var(--ok)">PASS</strong> — unassigned user rejected by Entra (AADSTS50105) before the app loaded. 11 Jul 2026.</td></tr>
+            <tr><td class="idc">D-7</td><td>Session: sign-out &amp; token expiry</td><td>Tokens cleared; no reuse after sign-out</td><td><strong style="color:var(--ok)">PASS</strong> — after sign-out, returned to sign-in screen and all MSAL tokens cleared from <code>sessionStorage</code>. 11 Jul 2026.</td></tr>
+            <tr><td class="idc">D-8</td><td>Sensitive-data-in-response scan</td><td>No secrets/tokens/PII in served assets</td><td class="fill">&lt;paste — Part B (Probely)&gt;</td></tr>
+            <tr><td class="idc">D-9</td><td>OAuth redirect-URI / state handling</td><td>No open-redirect; state/PKCE enforced</td><td class="fill">&lt;paste — Part B (Probely)&gt;</td></tr>
           </tbody>
         </table>
       </div>

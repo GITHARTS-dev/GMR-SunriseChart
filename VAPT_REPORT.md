@@ -10,6 +10,7 @@
 | **Hosting (as tested)** | Azure Static Web Apps (static files + CDN) |
 | **Live URL tested** | https://victorious-desert-04521ca10.7.azurestaticapps.net/ |
 | **Assessment type** | Grey-box — static code/config review + dependency audit + automated dynamic scan (DAST) |
+| **SAST tooling** | Snyk Code + manual code review |
 | **DAST tooling** | Snyk API & Web (formerly Probely) |
 | **Report classification** | Confidential |
 | **Prepared by** | Madhanraj & Naresh |
@@ -109,7 +110,8 @@ The engagement followed industry-standard methodologies:
 Techniques applied:
 
 1. **Static Application Security Testing (SAST)** — manual review of all source
-   code and build/hosting configuration.
+   code and build/hosting configuration, plus **Snyk Code** automated static
+   analysis (**0 issues** across 24 analyzed files).
 2. **Software Composition Analysis (SCA)** — dependency vulnerability audit
    (`npm audit`) against the full dependency tree.
 3. **Dynamic Application Security Testing (DAST)** — automated scanning of the
@@ -423,8 +425,8 @@ Recommended actions:
 
 ## 10. Appendices
 
-- **Appendix A** — Tooling: manual source review; `npm audit` (SCA);
-  **Snyk API & Web** (DAST).
+- **Appendix A** — Tooling: manual source review + **Snyk Code** (SAST);
+  `npm audit` + **Snyk Open Source** (SCA); **Snyk API & Web** (DAST).
 - **Appendix B** — Snyk API & Web scan report (PDF export attached).
 - **Appendix C** — Evidence screenshots (D-1 to D-9).
 - **Appendix D** — References: OWASP Top 10 (2021), OWASP WSTG, OWASP ASVS,

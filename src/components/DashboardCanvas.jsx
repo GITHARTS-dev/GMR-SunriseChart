@@ -12,7 +12,7 @@ import RiskTargetIcon from "./RiskTargetIcon.jsx";
 import AccountMenu from "./AccountMenu.jsx";
 import RagLegend from "./RagLegend.jsx";
 
-import { CANVAS_W, CANVAS_H } from "../constants.js";
+import { CANVAS_W, CANVAS_H, HEADER_H, LEFT_GUTTER, BOTTOM_LABEL } from "../constants.js";
 import { flattenForRender } from "../utils.js";
 
 export default function DashboardCanvas({
@@ -36,6 +36,9 @@ export default function DashboardCanvas({
   const [hover, setHover] = useState(null);
   const [anchor, setAnchor] = useState(null);
   const [selected, setSelected] = useState(null);
+  // Which status-legend level the user is hovering, if any. Topics whose RAG
+  // matches are highlighted; the rest dim, so the hovered status stands out.
+  const [legendHover, setLegendHover] = useState(null);
   const [showRisk, setShowRisk] = useState(false);
   const [availableWidth, setAvailableWidth] = useState(CANVAS_W);
   const [availableHeight, setAvailableHeight] = useState(CANVAS_H);
@@ -250,6 +253,29 @@ export default function DashboardCanvas({
             }}
           >
             <PhaseBackground />
+
+            {/* Focus-mode scrim: when a status legend is hovered, this darkens
+                the coloured phase bands (and the dimmed, non-matching topics
+                beneath it) so only the matching topics — rendered above it —
+                stand out. Scoped to the band rectangle only (matches the
+                PhaseBackground clip) so the PEOPLE / PROCESS / TECHNOLOGY axis
+                gutters stay unshaded. Sits above the background/dimmed cards
+                (z 8) but below the phase headers, badge and matching cards. */}
+            <motion.div
+              className="absolute pointer-events-none"
+              style={{
+                left: LEFT_GUTTER,
+                top: HEADER_H + 22,
+                width: CANVAS_W - 92 - LEFT_GUTTER,
+                height: CANVAS_H - BOTTOM_LABEL - (HEADER_H + 22),
+                background: "rgba(9, 17, 36, 0.55)",
+                zIndex: 8,
+              }}
+              initial={false}
+              animate={{ opacity: legendHover ? 1 : 0 }}
+              transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+            />
+
             <PhaseHeaders />
             <AxisLabels />
             <GMRBadge />
@@ -261,6 +287,7 @@ export default function DashboardCanvas({
                 position={item.pos}
                 index={i}
                 isActive={hover?.key === item.key}
+                legendHover={legendHover}
                 onHover={handleHover}
                 onLeave={handleLeave}
                 onClick={onCategoryClick}
@@ -286,7 +313,7 @@ export default function DashboardCanvas({
       </div>
 
       {/* Status legend */}
-      <RagLegend />
+      <RagLegend hoveredLevel={legendHover} onHoverLevel={setLegendHover} />
 
       {/* Risk register (FMEA) — bottom-left launcher */}
       <button

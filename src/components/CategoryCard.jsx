@@ -15,11 +15,19 @@ export default function CategoryCard({
   onHover,
   onLeave,
   isActive,
+  legendHover = null,
   index,
   onClick,
 }) {
   const { category, locked, lockedMessage } = item;
   const rag = headerRag(item.initiatives);
+
+  // Status-legend hover highlighting: when the user hovers a legend status,
+  // topics that share that RAG level grow + glow, and the rest dim so the
+  // matching set stands out.
+  const legendActive = legendHover != null;
+  const legendMatch = legendActive && rag === legendHover;
+  const legendDim = legendActive && !legendMatch;
 
   // Width caps prevent overlap with curves
   const maxWidth =
@@ -32,13 +40,16 @@ export default function CategoryCard({
         left: position.x,
         top: position.y + HEADER_H,
         width: maxWidth,
-        zIndex: isActive ? 30 : 5,
+        zIndex: legendMatch ? 25 : isActive ? 30 : 5,
       }}
       initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
+      animate={{
+        opacity: legendDim ? 0.7 : 1,
+        y: 0,
+      }}
       transition={{
-        duration: 0.5,
-        delay: 0.05 * index,
+        duration: legendActive ? 0.22 : 0.5,
+        delay: legendActive ? 0 : 0.05 * index,
         ease: [0.16, 1, 0.3, 1],
       }}
       onMouseEnter={(e) => onHover(item, e)}
@@ -61,7 +72,7 @@ export default function CategoryCard({
           />
         </span>
         <div
-          className="flex-1 text-white font-semibold decoration-white/70 underline-offset-0 leading-tight italic"
+          className="flex-1 text-white font-semibold decoration-white/70 underline-offset-0 leading-tight italic transition-all duration-200"
           style={{
             fontSize: 14,
             textShadow: "0 1px 2px rgba(0,0,0,0.35)",

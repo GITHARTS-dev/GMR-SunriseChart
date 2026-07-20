@@ -16,6 +16,7 @@ import {
   Target,
   TrendingUp,
   Users,
+  X,
 } from "lucide-react";
 
 import {
@@ -73,6 +74,61 @@ const actionRank = (task) => {
   return 3;
 };
 const byActionOrder = (a, b) => actionRank(a) - actionRank(b);
+
+// Which status-filter bucket an action falls into. Mirrors actionRank: a
+// not-done action past its deadline counts as "delayed" — not as
+// in-progress / to-do — so the buckets are mutually exclusive.
+const taskBucket = (task) => {
+  if (task.status === "done") return "done";
+  if (isOverdue(task.status, taskEndDate(task))) return "delayed";
+  if (task.status === "inprogress") return "inprogress";
+  return "todo";
+};
+
+// Status filter options shown above the initiatives. Each carries its own
+// accent so the icon (and the selected pill) reads in the status colour.
+const STATUS_FILTERS = [
+  {
+    key: "all",
+    label: "All",
+    Icon: ListChecks,
+    idleIcon: "text-slate-500",
+    activeIcon: "text-emerald-600",
+    active: "border-emerald-300 bg-emerald-50 text-emerald-700",
+  },
+  {
+    key: "done",
+    label: "Completed",
+    Icon: CheckCircle2,
+    idleIcon: "text-emerald-500",
+    activeIcon: "text-emerald-600",
+    active: "border-emerald-300 bg-emerald-50 text-emerald-700",
+  },
+  {
+    key: "inprogress",
+    label: "In Progress",
+    Icon: Clock,
+    idleIcon: "text-orange-500",
+    activeIcon: "text-orange-600",
+    active: "border-orange-300 bg-orange-50 text-orange-700",
+  },
+  {
+    key: "todo",
+    label: "Not Started",
+    Icon: Hourglass,
+    idleIcon: "text-amber-500",
+    activeIcon: "text-amber-600",
+    active: "border-amber-300 bg-amber-50 text-amber-700",
+  },
+  {
+    key: "delayed",
+    label: "Delayed",
+    Icon: AlertCircle,
+    idleIcon: "text-rose-500",
+    activeIcon: "text-rose-600",
+    active: "border-rose-300 bg-rose-50 text-rose-700",
+  },
+];
 
 const getInitials = (name, email) => {
   const s = String(name || email || "?").trim();
@@ -238,7 +294,13 @@ function ActionRow({ task }) {
 }
 
 // Expanded or collapsed initiative block.
-function InitiativeBlock({ initiative, expanded, onToggle }) {
+function InitiativeBlock({
+  initiative,
+  expanded,
+  onToggle,
+  statusFilter = "all",
+  collapsible = true,
+}) {
   const stats = initiative.stats || computeStats(initiative.tasks);
   const pct = stats.pct;
   const progressColor = getProgressColor(pct);
@@ -281,6 +343,10 @@ function InitiativeBlock({ initiative, expanded, onToggle }) {
   }
 
   const orderedTasks = [...initiative.tasks].sort(byActionOrder);
+  const visibleTasks =
+    statusFilter === "all"
+      ? orderedTasks
+      : orderedTasks.filter((t) => taskBucket(t) === statusFilter);
 
   return (
     <div
@@ -307,21 +373,28 @@ function InitiativeBlock({ initiative, expanded, onToggle }) {
             />
           </div>
         </div>
-        <button
-          type="button"
-          onClick={onToggle}
-          className="shrink-0 rounded-lg border border-slate-200 p-1.5 text-slate-500 transition-colors hover:bg-slate-50"
-          aria-label="Collapse"
-        >
-          <ChevronUp className="h-5 w-5" />
-        </button>
+        {collapsible ? (
+          <button
+            type="button"
+            onClick={onToggle}
+            className="shrink-0 rounded-lg border border-slate-200 p-1.5 text-slate-500 transition-colors hover:bg-slate-50"
+            aria-label="Collapse"
+          >
+            <ChevronUp className="h-5 w-5" />
+          </button>
+        ) : null}
       </div>
 
       <div className="space-y-3 px-4 pb-4 pt-4">
         <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
           Actions
+          {statusFilter !== "all" ? (
+            <span className="ml-1.5 text-slate-400">
+              · {visibleTasks.length} shown
+            </span>
+          ) : null}
         </div>
-        {orderedTasks.map((task, idx) => (
+        {visibleTasks.map((task, idx) => (
           <ActionRow key={`${initiative.name}-${idx}-${task.task}`} task={task} />
         ))}
       </div>
@@ -334,6 +407,10 @@ export default function HeaderDetailView({ item, onBack, userName, userEmail }) 
   const [openInitiative, setOpenInitiative] = useState(
     initiatives[0]?.name || null
   );
+  // Status filter applied to the ACTIONS of every initiative. "all" shows the
+  // usual accordion; any other value expands each initiative that has matching
+  // actions and shows only those actions.
+  const [statusFilter, setStatusFilter] = useState("all");
 
   if (!item) return null;
 
@@ -344,6 +421,24 @@ export default function HeaderDetailView({ item, onBack, userName, userEmail }) 
 
   const toggleInitiative = (name) =>
     setOpenInitiative((prev) => (prev === name ? null : name));
+
+  // Per-bucket action counts (drives the count badge on each filter chip).
+  const filterCounts = allTasks.reduce(
+    (acc, t) => {
+      acc.all += 1;
+      acc[taskBucket(t)] += 1;
+      return acc;
+    },
+    { all: 0, done: 0, inprogress: 0, todo: 0, delayed: 0 }
+  );
+
+  const filtering = statusFilter !== "all";
+  // When filtering, drop initiatives that have no matching action.
+  const visibleInitiatives = filtering
+    ? initiatives.filter((ini) =>
+        (ini.tasks || []).some((t) => taskBucket(t) === statusFilter)
+      )
+    : initiatives;
 
   const statCards = [
     { Icon: Briefcase, value: initiatives.length, label: "Initiatives", bg: "bg-violet-100", fg: "text-violet-500" },
@@ -479,18 +574,81 @@ export default function HeaderDetailView({ item, onBack, userName, userEmail }) 
             ))}
           </div>
 
+          {/* Filter by status — applies to the actions of every initiative */}
+          {!item.locked ? (
+            <div className="mt-6 flex flex-wrap items-center justify-between gap-y-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="mr-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+                  Filter by status
+                </span>
+                {STATUS_FILTERS.map((f, i) => {
+                  const isActive = statusFilter === f.key;
+                  const count = filterCounts[f.key];
+                  return (
+                    <React.Fragment key={f.key}>
+                      {i === 1 ? (
+                        <span className="mx-0.5 h-6 w-px shrink-0 bg-slate-200" />
+                      ) : null}
+                      <button
+                        type="button"
+                        onClick={() => setStatusFilter(f.key)}
+                        aria-pressed={isActive}
+                        className={`inline-flex items-center gap-2 rounded-xl border px-3.5 py-2 text-sm font-semibold transition-colors ${
+                          isActive
+                            ? f.active
+                            : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                        }`}
+                      >
+                        <f.Icon
+                          className={`h-4 w-4 ${
+                            isActive ? f.activeIcon : f.idleIcon
+                          }`}
+                        />
+                        {f.label}
+                        <span
+                          className={`text-xs font-bold ${
+                            isActive ? "opacity-80" : "text-slate-400"
+                          }`}
+                        >
+                          {count}
+                        </span>
+                      </button>
+                    </React.Fragment>
+                  );
+                })}
+              </div>
+
+              {filtering ? (
+                <button
+                  type="button"
+                  onClick={() => setStatusFilter("all")}
+                  className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-semibold text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700"
+                >
+                  <X className="h-4 w-4" />
+                  Clear filter
+                </button>
+              ) : null}
+            </div>
+          ) : null}
+
           {/* Initiatives */}
           {item.locked ? (
             <div className="mt-5 rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-4 py-10 text-center text-sm text-slate-600">
               These actions will appear once the earlier phases are fully complete.
             </div>
+          ) : visibleInitiatives.length === 0 ? (
+            <div className="mt-5 rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-4 py-10 text-center text-sm text-slate-600">
+              No actions match this filter.
+            </div>
           ) : (
             <div className="mt-5 space-y-3">
-              {initiatives.map((ini) => (
+              {visibleInitiatives.map((ini) => (
                 <InitiativeBlock
                   key={ini.name}
                   initiative={ini}
-                  expanded={openInitiative === ini.name}
+                  statusFilter={statusFilter}
+                  collapsible={!filtering}
+                  expanded={filtering ? true : openInitiative === ini.name}
                   onToggle={() => toggleInitiative(ini.name)}
                 />
               ))}
